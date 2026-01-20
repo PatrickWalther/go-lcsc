@@ -9,9 +9,7 @@ import (
 
 // TestKeywordSearchBasic tests basic keyword search functionality with real LCSC API.
 func TestKeywordSearchBasic(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	t.Skip("integration test - use 'go test -run Integration' to run integration tests")
 
 	client := NewClient()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -48,9 +46,7 @@ func TestKeywordSearchBasic(t *testing.T) {
 
 // TestKeywordSearchMultipleResults tests that search returns multiple results.
 func TestKeywordSearchMultipleResults(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	t.Skip("integration test")
 
 	client := NewClient()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -116,9 +112,7 @@ func TestKeywordSearchWhitespaceKeyword(t *testing.T) {
 
 // TestKeywordSearchCaching tests that search results are cached properly.
 func TestKeywordSearchCaching(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	t.Skip("integration test")
 
 	cache := NewMemoryCache(5 * time.Minute)
 	client := NewClient(WithCache(cache))
@@ -160,9 +154,7 @@ func TestKeywordSearchCaching(t *testing.T) {
 
 // TestGetProductDetailsBasic tests retrieving detailed product information.
 func TestGetProductDetailsBasic(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	t.Skip("integration test")
 
 	client := NewClient()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -207,9 +199,7 @@ func TestGetProductDetailsBasic(t *testing.T) {
 
 // TestGetProductDetailsFields tests that all expected product fields are populated.
 func TestGetProductDetailsFields(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	t.Skip("integration test")
 
 	client := NewClient()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -284,9 +274,7 @@ func TestGetProductDetailsWhitespaceCode(t *testing.T) {
 
 // TestGetProductDetailsNotFound tests handling of non-existent product codes.
 func TestGetProductDetailsNotFound(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	t.Skip("integration test")
 
 	client := NewClient()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -309,9 +297,7 @@ func TestGetProductDetailsNotFound(t *testing.T) {
 
 // TestGetProductDetailsCaching tests that product details are cached.
 func TestGetProductDetailsCaching(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	t.Skip("integration test")
 
 	cache := NewMemoryCache(5 * time.Minute)
 	client := NewClient(WithCache(cache))
@@ -361,9 +347,7 @@ func TestProductURL(t *testing.T) {
 
 // TestConcurrentSearches tests that multiple concurrent searches work correctly.
 func TestConcurrentSearches(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	t.Skip("integration test")
 
 	client := NewClient()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

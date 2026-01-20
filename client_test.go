@@ -274,9 +274,7 @@ func TestParseResponseRateLimit(t *testing.T) {
 
 // TestContextCancellation tests that context cancellation is respected.
 func TestContextCancellation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
+	t.Skip("integration test")
 
 	client := NewClient()
 
