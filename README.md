@@ -1,5 +1,11 @@
 # go-lcsc
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/PatrickWalther/go-lcsc.svg)](https://pkg.go.dev/github.com/PatrickWalther/go-lcsc)
+[![Go Report Card](https://goreportcard.com/badge/github.com/PatrickWalther/go-lcsc)](https://goreportcard.com/report/github.com/PatrickWalther/go-lcsc)
+[![Tests](https://github.com/PatrickWalther/go-lcsc/actions/workflows/test.yml/badge.svg)](https://github.com/PatrickWalther/go-lcsc/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Coverage](https://img.shields.io/badge/coverage-88.8%25-brightgreen)](https://github.com/PatrickWalther/go-lcsc)
+
 A Go client library for [LCSC](https://lcsc.com) electronics components.
 
 > **Note**: LCSC does not have an official public API. This library uses undocumented
@@ -7,10 +13,28 @@ A Go client library for [LCSC](https://lcsc.com) electronics components.
 > without notice. The approach is based on the [Part-DB](https://github.com/Part-DB/Part-DB-server)
 > implementation.
 
+## Requirements
+
+- **Go 1.22+** (tested on Go 1.22 and 1.23)
+- No external dependencies
+
 ## Installation
 
 ```bash
 go get github.com/PatrickWalther/go-lcsc
+```
+
+## Quick Start
+
+```bash
+# Initialize a new Go module (if needed)
+go mod init example.com/myapp
+
+# Get the library
+go get github.com/PatrickWalther/go-lcsc
+
+# Run tests to verify installation
+go test github.com/PatrickWalther/go-lcsc/...
 ```
 
 ## Usage
@@ -221,6 +245,95 @@ Currency is set via the `WithCurrency()` option. Common values:
 - `AUD` - Australian Dollar
 - `CAD` - Canadian Dollar
 
+## Testing
+
+This library includes comprehensive unit and integration tests:
+
+```bash
+# Run all tests (unit tests only, ~1.8s)
+go test ./...
+
+# Run with coverage report
+go test ./... -cover
+
+# Generate coverage HTML report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
+
+# Run integration tests (makes real API calls, ~1.8s)
+go test -run Integration ./...
+
+# Run specific test
+go test -run TestKeywordSearchBasic ./...
+```
+
+**Test Coverage**: 88.8%
+- Unit tests: Fast, no external dependencies
+- Integration tests: Real API calls to LCSC, can be run separately
+
+## Development
+
+### Code Quality
+
+```bash
+# Run linter
+golangci-lint run ./...
+
+# Run type checker
+go vet ./...
+
+# Format code
+go fmt ./...
+```
+
+### Project Structure
+
+```
+.
+├── *.go              # Main library code
+├── *_test.go         # Unit tests
+├── *_integration_test.go  # Integration tests (real API calls)
+├── examples/         # Example usage
+├── .github/workflows/
+│   ├── test.yml      # CI/CD: Unit tests on each push
+│   └── release.yml   # Release workflow
+├── go.mod            # Module definition
+└── README.md         # Documentation
+```
+
+### Adding to Your Project
+
+1. **Import the package**:
+   ```go
+   import "github.com/PatrickWalther/go-lcsc"
+   ```
+
+2. **Create a client**:
+   ```go
+   client := lcsc.NewClient()
+   ```
+
+3. **Use the API methods**:
+   ```go
+   results, err := client.KeywordSearch(ctx, lcsc.SearchRequest{
+       Keyword: "STM32F103",
+   })
+   ```
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
+
+## Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure `go test ./...` and `golangci-lint run ./...` pass
+5. Submit a pull request
+
+## Acknowledgments
+
+- [LCSC](https://lcsc.com) for providing the electronics components API
+- [Part-DB](https://github.com/Part-DB/Part-DB-server) for the API endpoint discovery
