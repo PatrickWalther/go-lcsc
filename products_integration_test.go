@@ -276,3 +276,49 @@ func TestConcurrentSearchesIntegration(t *testing.T) {
 		}
 	}
 }
+
+// TestRateLimiterWithRealAPI tests that rate limiter works correctly with real API calls.
+func TestRateLimiterWithRealAPI(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	// Create client with default rate limit (5 RPS)
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Make sequential requests - should all succeed without rate limit errors
+	keywords := []string{"STM32", "capacitor"}
+	for _, kw := range keywords {
+		_, err := client.KeywordSearch(ctx, SearchRequest{
+			Keyword: kw,
+		})
+		if err != nil {
+			t.Fatalf("request with keyword %q failed: %v", kw, err)
+		}
+	}
+}
+
+// TestRateLimiterWithHighRPS tests rate limiter with higher RPS setting.
+func TestRateLimiterWithHighRPS(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	// Create client with high rate limit (10 RPS)
+	client := NewClient(WithRateLimit(10.0))
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Make multiple rapid requests - should all succeed
+	keywords := []string{"STM32", "capacitor", "resistor"}
+	for _, kw := range keywords {
+		_, err := client.KeywordSearch(ctx, SearchRequest{
+			Keyword: kw,
+		})
+		if err != nil {
+			t.Fatalf("request with keyword %q failed: %v", kw, err)
+		}
+	}
+}
