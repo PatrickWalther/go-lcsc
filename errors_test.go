@@ -160,14 +160,15 @@ func TestErrorsAreDistinct(t *testing.T) {
 
 // TestAPIErrorIsError tests that APIError implements error interface.
 func TestAPIErrorIsError(t *testing.T) {
-	var err error = &APIError{Code: 400, Message: "test"}
+	apiErr := &APIError{Code: 400, Message: "test"}
+	var err error = apiErr
 
-	if err == nil {
-		t.Fatal("expected non-nil error")
+	if apiErr.Error() == "" {
+		t.Fatal("expected non-empty error string")
 	}
 
-	if err.Error() == "" {
-		t.Fatal("expected non-empty error string")
+	if !contains(err.Error(), "400") {
+		t.Fatal("expected error string to contain code")
 	}
 }
 
