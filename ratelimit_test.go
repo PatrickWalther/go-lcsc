@@ -104,19 +104,25 @@ func TestRateLimiterWaitContextCancellation(t *testing.T) {
 	}
 
 	// Now we're out of tokens and the next wait will block
+	errorChan := make(chan error, 1)
 	go func() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		cancel()
 	}()
 
-	// This should fail with context error
-	err := rl.Wait(ctx)
-	if err == nil {
-		t.Fatal("expected error for cancelled context")
-	}
+	go func() {
+		errorChan <- rl.Wait(ctx)
+	}()
 
-	if err != context.Canceled {
-		t.Logf("expected context.Canceled, got %v (acceptable error type)", err)
+	// Wait for result with timeout
+	select {
+	case err := <-errorChan:
+		if err == nil {
+			t.Fatal("expected error for cancelled context")
+		}
+		// Acceptable - got an error as expected
+	case <-time.After(2 * time.Second):
+		t.Fatal("wait for cancellation took too long")
 	}
 }
 
