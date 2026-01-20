@@ -19,6 +19,7 @@ type MemoryCache struct {
 	mu      sync.RWMutex
 	entries map[string]*cacheEntry
 	ttl     time.Duration
+	done    chan struct{}
 }
 
 type cacheEntry struct {
@@ -31,6 +32,7 @@ func NewMemoryCache(defaultTTL time.Duration) *MemoryCache {
 	c := &MemoryCache{
 		entries: make(map[string]*cacheEntry),
 		ttl:     defaultTTL,
+		done:    make(chan struct{}),
 	}
 	go c.cleanupLoop()
 	return c
@@ -46,11 +48,10 @@ func (c *MemoryCache) Get(key string) ([]byte, bool) {
 		return nil, false
 	}
 
-	if time.Now().After(entry.expiresAt) {
-		return nil, false
+	if time.Now().Before(entry.expiresAt) {
+		return entry.value, true
 	}
-
-	return entry.value, true
+	return nil, false
 }
 
 // Set stores a value in the cache with the specified TTL.
@@ -81,8 +82,13 @@ func (c *MemoryCache) cleanupLoop() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		c.cleanup()
+	for {
+		select {
+		case <-ticker.C:
+			c.cleanup()
+		case <-c.done:
+			return
+		}
 	}
 }
 
@@ -110,6 +116,11 @@ func (c *MemoryCache) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.entries = make(map[string]*cacheEntry)
+}
+
+// Close stops the cleanup goroutine.
+func (c *MemoryCache) Close() {
+	close(c.done)
 }
 
 // CacheConfig configures caching behavior.
