@@ -282,13 +282,13 @@ func TestGetProductDetailsNotFound(t *testing.T) {
 
 	// Use a product code that doesn't exist
 	product, err := client.GetProductDetails(ctx, "C99999999")
-	
+
 	// API may return either error or empty product - both are acceptable
 	if product != nil && product.ProductCode == "" && err == nil {
 		// Product returned but empty - acceptable
 		return
 	}
-	
+
 	if err != nil && err != ErrProductNotFound {
 		t.Logf("API returned error for non-existent product: %v (acceptable)", err)
 		return
