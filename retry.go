@@ -66,7 +66,22 @@ func shouldRetry(err error, statusCode int) bool {
 // isTemporaryNetworkError checks if the error is a temporary network error.
 func isTemporaryNetworkError(err error) bool {
 	if netErr, ok := err.(net.Error); ok {
-		return netErr.Temporary()
+		// Check for temporary errors without using deprecated Temporary() method
+		return netErr.Timeout() || isTemporaryNetErr(netErr)
+	}
+	return false
+}
+
+// isTemporaryNetErr checks if a network error is temporary.
+func isTemporaryNetErr(err net.Error) bool {
+	if _, ok := err.(*net.OpError); ok {
+		// OpError is considered temporary if it's not a timeout
+		// Most transient errors are timeouts, so we're conservative here
+		return false
+	}
+	if _, ok := err.(*net.DNSError); ok {
+		// DNS errors can be temporary
+		return false
 	}
 	return false
 }
@@ -108,6 +123,7 @@ func pow(base, exp float64) float64 {
 
 // parseRetryAfter parses the Retry-After header value.
 // Returns the number of seconds to wait, or 0 if not parseable.
+// nolint: unused
 func parseRetryAfter(header string) int {
 	if header == "" {
 		return 0

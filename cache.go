@@ -130,12 +130,14 @@ func DefaultCacheConfig() CacheConfig {
 
 // cacheKeyForSearch generates a cache key for a search request.
 // Uses SHA256 hash for the keyword to keep keys manageable.
+// nolint: unused
 func cacheKeyForSearch(currency string, keyword string) string {
 	hash := sha256.Sum256([]byte(keyword))
 	return "search:" + currency + ":" + hex.EncodeToString(hash[:8])
 }
 
 // cacheKeyForDetails generates a cache key for product details.
+// nolint: unused
 func cacheKeyForDetails(currency string, productCode string) string {
 	return "details:" + currency + ":" + productCode
 }

@@ -139,7 +139,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, params url.
 // executeRequest performs a single HTTP request.
 func (c *Client) executeRequest(ctx context.Context, method, path string, params url.Values, body interface{}) ([]byte, int, error) {
 	reqURL := c.baseURL + path
-	if params != nil && len(params) > 0 {
+	if len(params) > 0 {
 		reqURL = fmt.Sprintf("%s?%s", reqURL, params.Encode())
 	}
 
@@ -169,7 +169,9 @@ func (c *Client) executeRequest(ctx context.Context, method, path string, params
 	if err != nil {
 		return nil, 0, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
