@@ -1,0 +1,387 @@
+package lcsc
+
+import (
+	"context"
+	"strings"
+	"testing"
+	"time"
+)
+
+// TestKeywordSearchBasic tests basic keyword search functionality with real LCSC API.
+func TestKeywordSearchBasic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	resp, err := client.KeywordSearch(ctx, SearchRequest{
+		Keyword: "STM32F103",
+	})
+
+	if err != nil {
+		t.Fatalf("KeywordSearch failed: %v", err)
+	}
+
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+
+	if len(resp.Products) == 0 {
+		t.Fatal("expected at least one product in search results")
+	}
+
+	// Verify first product has expected fields
+	p := resp.Products[0]
+	if p.ProductCode == "" {
+		t.Error("expected product code to be non-empty")
+	}
+	if p.BrandNameEn == "" {
+		t.Error("expected brand name to be non-empty")
+	}
+	if p.ProductIntroEn == "" {
+		t.Error("expected product intro to be non-empty")
+	}
+}
+
+// TestKeywordSearchMultipleResults tests that search returns multiple results.
+func TestKeywordSearchMultipleResults(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	resp, err := client.KeywordSearch(ctx, SearchRequest{
+		Keyword: "capacitor",
+	})
+
+	if err != nil {
+		t.Fatalf("KeywordSearch failed: %v", err)
+	}
+
+	if len(resp.Products) == 0 {
+		t.Fatal("expected products in search results")
+	}
+
+	if resp.TotalCount == 0 {
+		t.Error("expected non-zero total count")
+	}
+
+	// Verify all products have product codes
+	for i, p := range resp.Products {
+		if p.ProductCode == "" {
+			t.Errorf("product %d has empty product code", i)
+		}
+	}
+}
+
+// TestKeywordSearchEmptyKeyword tests error handling for empty keyword.
+func TestKeywordSearchEmptyKeyword(t *testing.T) {
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := client.KeywordSearch(ctx, SearchRequest{
+		Keyword: "",
+	})
+
+	if err == nil {
+		t.Fatal("expected error for empty keyword")
+	}
+
+	if !strings.Contains(err.Error(), "keyword") {
+		t.Errorf("expected keyword-related error, got: %v", err)
+	}
+}
+
+// TestKeywordSearchWhitespaceKeyword tests that whitespace-only keywords are rejected.
+func TestKeywordSearchWhitespaceKeyword(t *testing.T) {
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := client.KeywordSearch(ctx, SearchRequest{
+		Keyword: "   ",
+	})
+
+	if err == nil {
+		t.Fatal("expected error for whitespace-only keyword")
+	}
+}
+
+// TestKeywordSearchCaching tests that search results are cached properly.
+func TestKeywordSearchCaching(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	cache := NewMemoryCache(5 * time.Minute)
+	client := NewClient(WithCache(cache))
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	keyword := "LM7805"
+
+	// First search should hit the API
+	resp1, err := client.KeywordSearch(ctx, SearchRequest{
+		Keyword: keyword,
+	})
+	if err != nil {
+		t.Fatalf("first search failed: %v", err)
+	}
+
+	initialCacheSize := cache.Size()
+	if initialCacheSize == 0 {
+		t.Error("expected cache to have entries after first search")
+	}
+
+	// Second search should use cache
+	resp2, err := client.KeywordSearch(ctx, SearchRequest{
+		Keyword: keyword,
+	})
+	if err != nil {
+		t.Fatalf("second search failed: %v", err)
+	}
+
+	// Results should be identical
+	if len(resp1.Products) != len(resp2.Products) {
+		t.Errorf("expected same number of products, got %d vs %d", len(resp1.Products), len(resp2.Products))
+	}
+
+	if resp1.TotalCount != resp2.TotalCount {
+		t.Errorf("expected same total count, got %d vs %d", resp1.TotalCount, resp2.TotalCount)
+	}
+}
+
+// TestGetProductDetailsBasic tests retrieving detailed product information.
+func TestGetProductDetailsBasic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	// First, find a product code from search
+	searchResp, err := client.KeywordSearch(ctx, SearchRequest{
+		Keyword: "STM32F103",
+	})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+
+	if len(searchResp.Products) == 0 {
+		t.Fatal("no products found for STM32F103")
+	}
+
+	productCode := searchResp.Products[0].ProductCode
+
+	// Get details for the product
+	product, err := client.GetProductDetails(ctx, productCode)
+	if err != nil {
+		t.Fatalf("GetProductDetails failed for %s: %v", productCode, err)
+	}
+
+	if product == nil {
+		t.Fatal("expected non-nil product")
+	}
+
+	if product.ProductCode != productCode {
+		t.Errorf("expected product code %s, got %s", productCode, product.ProductCode)
+	}
+
+	// Verify required fields
+	if product.BrandNameEn == "" {
+		t.Error("expected brand name to be non-empty")
+	}
+	if product.ProductIntroEn == "" {
+		t.Error("expected product intro to be non-empty")
+	}
+}
+
+// TestGetProductDetailsFields tests that all expected product fields are populated.
+func TestGetProductDetailsFields(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Use a known component that typically has comprehensive data
+	product, err := client.GetProductDetails(ctx, "C8734")
+	if err != nil {
+		t.Fatalf("GetProductDetails failed: %v", err)
+	}
+
+	// Check key fields that should be populated for most products
+	if product.ProductCode == "" {
+		t.Error("expected product code")
+	}
+	if product.BrandNameEn == "" {
+		t.Error("expected brand name")
+	}
+	if product.ProductModel == "" {
+		t.Error("expected product model")
+	}
+
+	// Stock and pricing info
+	if product.StockNumber < 0 {
+		t.Error("expected non-negative stock number")
+	}
+	if product.MinPacketNumber <= 0 {
+		t.Error("expected positive min packet number")
+	}
+
+	// Should have price breaks (optional, may not exist for all products)
+	// No assertion needed - some products may have no price breaks
+
+	// Verify price breaks are valid
+	for i, pb := range product.ProductPriceList {
+		if pb.Ladder <= 0 {
+			t.Errorf("price break %d has non-positive ladder", i)
+		}
+		if pb.ProductPrice < 0 {
+			t.Errorf("price break %d has negative price", i)
+		}
+	}
+}
+
+// TestGetProductDetailsEmptyCode tests error handling for empty product code.
+func TestGetProductDetailsEmptyCode(t *testing.T) {
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := client.GetProductDetails(ctx, "")
+	if err == nil {
+		t.Fatal("expected error for empty product code")
+	}
+
+	if !strings.Contains(err.Error(), "productCode") {
+		t.Errorf("expected productCode-related error, got: %v", err)
+	}
+}
+
+// TestGetProductDetailsWhitespaceCode tests that whitespace-only codes are rejected.
+func TestGetProductDetailsWhitespaceCode(t *testing.T) {
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := client.GetProductDetails(ctx, "   ")
+	if err == nil {
+		t.Fatal("expected error for whitespace-only code")
+	}
+}
+
+// TestGetProductDetailsNotFound tests handling of non-existent product codes.
+func TestGetProductDetailsNotFound(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Use a product code that doesn't exist
+	_, err := client.GetProductDetails(ctx, "C99999999")
+	if err == nil {
+		t.Fatal("expected error for non-existent product code")
+	}
+
+	// Should return product not found error
+	if err != ErrProductNotFound {
+		t.Logf("expected ErrProductNotFound, got: %v", err)
+		// Note: API behavior may vary, so we just log the actual error
+	}
+}
+
+// TestGetProductDetailsCaching tests that product details are cached.
+func TestGetProductDetailsCaching(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	cache := NewMemoryCache(5 * time.Minute)
+	client := NewClient(WithCache(cache))
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	productCode := "C8734"
+
+	// First request should populate cache
+	product1, err := client.GetProductDetails(ctx, productCode)
+	if err != nil {
+		t.Fatalf("first request failed: %v", err)
+	}
+
+	if cache.Size() == 0 {
+		t.Error("expected cache to have entries after first request")
+	}
+
+	// Second request should use cache
+	product2, err := client.GetProductDetails(ctx, productCode)
+	if err != nil {
+		t.Fatalf("second request failed: %v", err)
+	}
+
+	// Results should be identical
+	if product1.ProductCode != product2.ProductCode {
+		t.Errorf("product codes differ: %s vs %s", product1.ProductCode, product2.ProductCode)
+	}
+	if product1.BrandNameEn != product2.BrandNameEn {
+		t.Errorf("brand names differ: %s vs %s", product1.BrandNameEn, product2.BrandNameEn)
+	}
+}
+
+// TestProductURL tests the GetProductURL method.
+func TestProductURL(t *testing.T) {
+	product := &Product{
+		ProductCode: "C12345",
+	}
+
+	expectedURL := "https://www.lcsc.com/product-detail/C12345.html"
+	actualURL := product.GetProductURL()
+
+	if actualURL != expectedURL {
+		t.Errorf("expected URL %s, got %s", expectedURL, actualURL)
+	}
+}
+
+// TestConcurrentSearches tests that multiple concurrent searches work correctly.
+func TestConcurrentSearches(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	client := NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	keywords := []string{"STM32", "capacitor", "resistor", "diode"}
+	results := make(chan error, len(keywords))
+
+	for _, keyword := range keywords {
+		go func(kw string) {
+			_, err := client.KeywordSearch(ctx, SearchRequest{
+				Keyword: kw,
+			})
+			results <- err
+		}(keyword)
+	}
+
+	for i := 0; i < len(keywords); i++ {
+		if err := <-results; err != nil {
+			t.Errorf("concurrent search failed: %v", err)
+		}
+	}
+}
