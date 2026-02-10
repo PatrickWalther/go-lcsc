@@ -2,21 +2,17 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/PatrickWalther/go-lcsc.svg)](https://pkg.go.dev/github.com/PatrickWalther/go-lcsc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/PatrickWalther/go-lcsc)](https://goreportcard.com/report/github.com/PatrickWalther/go-lcsc)
-[![Tests](https://github.com/PatrickWalther/go-lcsc/actions/workflows/test.yml/badge.svg)](https://github.com/PatrickWalther/go-lcsc/actions)
+[![Tests](https://github.com/PatrickWalther/go-lcsc/actions/workflows/test.yml/badge.svg)](https://github.com/PatrickWalther/go-lcsc/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Coverage](https://img.shields.io/badge/coverage-88.8%25-brightgreen)](https://github.com/PatrickWalther/go-lcsc)
 
-A Go client library for [LCSC](https://lcsc.com) electronics components.
+Unofficial Go client for [LCSC](https://www.lcsc.com) component search and product details.
 
-> **Note**: LCSC does not have an official public API. This library uses undocumented
-> endpoints that work without authentication. These endpoints may change at any time
-> without notice. The approach is based on the [Part-DB](https://github.com/Part-DB/Part-DB-server)
-> implementation.
+LCSC does not provide a documented public API for this data. This library uses undocumented endpoints that can change without notice.
 
 ## Requirements
 
-- **Go 1.22+** (tested on Go 1.22 and 1.23)
-- No external dependencies
+- Go 1.22+
+- No external dependencies (stdlib only)
 
 ## Installation
 
@@ -26,314 +22,194 @@ go get github.com/PatrickWalther/go-lcsc
 
 ## Quick Start
 
-```bash
-# Initialize a new Go module (if needed)
-go mod init example.com/myapp
-
-# Get the library
-go get github.com/PatrickWalther/go-lcsc
-
-# Run tests to verify installation
-go test github.com/PatrickWalther/go-lcsc/...
-```
-
-## Usage
-
 ```go
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "time"
+	"context"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/PatrickWalther/go-lcsc"
+	"github.com/PatrickWalther/go-lcsc"
 )
 
 func main() {
-    // Create a new client (no authentication required)
-    client := lcsc.NewClient()
+	client := lcsc.NewClient(
+		lcsc.WithCurrency("USD"),
+		lcsc.WithRateLimit(5),
+	)
+	defer client.Close()
 
-    // Or with options
-    client = lcsc.NewClient(
-        lcsc.WithCurrency("USD"),
-        lcsc.WithCache(lcsc.NewMemoryCache(10 * time.Minute)),
-        lcsc.WithRateLimit(5.0), // requests per second
-    )
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 
-    ctx := context.Background()
+	search, err := client.Search.Keyword(ctx, &lcsc.SearchRequest{
+		Keyword: "STM32F103",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Search for products
-    results, err := client.KeywordSearch(ctx, lcsc.SearchRequest{
-        Keyword:  "STM32F103",
-        PageSize: 10,
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
+	if len(search.Products) == 0 {
+		log.Fatal("no products found")
+	}
 
-    for _, product := range results.Products {
-        fmt.Printf("%s - %s: %s\n", 
-            product.ProductCode, 
-            product.ProductModel,
-            product.ProductIntroEn)
-    }
+	product, err := client.Product.Details(ctx, search.Products[0].ProductCode)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Get product details
-    product, err := client.GetProductDetails(ctx, "C8734")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Printf("Product: %s by %s\n", product.ProductModel, product.BrandNameEn)
-    fmt.Printf("Stock: %d, Min Order: %d\n", product.StockNumber, product.MinPacketNumber)
-    fmt.Printf("URL: %s\n", product.GetProductURL())
-
-    // Access specifications
-    for _, param := range product.ParamVOList {
-        fmt.Printf("  %s: %s\n", param.ParamNameEn, param.ParamValueEn)
-    }
+	fmt.Printf("%s - %s\n", product.ProductCode, product.ProductModel)
+	fmt.Printf("Stock: %d\n", product.StockNumber)
 }
 ```
 
 ## Features
 
-- **No authentication required** - Uses unofficial LCSC endpoints
-- **Currency support** - Set currency via `WithCurrency()` (default: USD)
-- **Rate limiting** - Built-in token bucket rate limiter
-- **Caching** - Optional in-memory cache with TTL
-- **Retry logic** - Exponential backoff with jitter for transient errors
-- **Product search** - Search by keyword with pagination
-- **Product details** - Get full product info including specs and pricing
+- Service-based API: `client.Search` and `client.Product`
+- Automatic retries with exponential backoff for transient failures
+- Token-bucket request rate limiting
+- Optional in-memory response caching with configurable TTL
+- Typed errors with `errors.Is`/`errors.As` support
+- Thread-safe client for concurrent use
 
-## Client Options
+## API
 
-```go
-// Custom HTTP client
-client := lcsc.NewClient(
-    lcsc.WithHTTPClient(&http.Client{Timeout: 60*time.Second}))
-
-// Custom currency (affects pricing)
-client := lcsc.NewClient(lcsc.WithCurrency("EUR"))
-
-// Custom rate limit (requests per second)
-client := lcsc.NewClient(lcsc.WithRateLimit(10.0))
-
-// Enable caching
-cache := lcsc.NewMemoryCache(10 * time.Minute)
-client := lcsc.NewClient(lcsc.WithCache(cache))
-
-// Custom retry configuration
-client := lcsc.NewClient(lcsc.WithRetryConfig(lcsc.RetryConfig{
-    MaxRetries:     5,
-    InitialBackoff: 1 * time.Second,
-    MaxBackoff:     60 * time.Second,
-    Multiplier:     2.0,
-    Jitter:         0.1,
-}))
-
-// Disable retries
-client := lcsc.NewClient(lcsc.WithRetryConfig(lcsc.NoRetry()))
-```
-
-## API Methods
-
-### Product Search
+### Search Service
 
 ```go
-results, err := client.KeywordSearch(ctx, lcsc.SearchRequest{
-    Keyword:  "capacitor 100nF",
-    PageSize: 30, // max 100
+resp, err := client.Search.Keyword(ctx, &lcsc.SearchRequest{
+	Keyword: "CGJ2B2C0G1H390J050BA",
 })
 
-// Access results
-for _, p := range results.Products {
-    fmt.Println(p.ProductCode, p.ProductModel, p.BrandNameEn)
+for _, p := range resp.Products {
+	fmt.Println(p.ProductCode, p.ProductModel)
 }
 
-// Check for direct match (when searching by LCSC part number like "C12345")
-if results.DirectMatchCode != "" {
-    // LCSC found an exact match
+if resp.DirectMatchCode != "" {
+	fmt.Println("direct match:", resp.DirectMatchCode)
 }
 ```
 
-### Product Details
+### Product Service
 
 ```go
-product, err := client.GetProductDetails(ctx, "C8734")
-
-// Product info
-fmt.Println(product.ProductCode)     // "C8734"
-fmt.Println(product.ProductModel)    // MPN
-fmt.Println(product.BrandNameEn)     // Manufacturer
-fmt.Println(product.ProductIntroEn)  // Description
-fmt.Println(product.StockNumber)     // Available stock
-fmt.Println(product.PdfUrl)          // Datasheet URL
-fmt.Println(product.EncapStandard)   // Package/footprint
-fmt.Println(product.GetProductURL()) // LCSC product page
-
-// Pricing
-for _, pb := range product.ProductPriceList {
-    fmt.Printf("Qty %d+: %s%.4f\n", pb.Ladder, pb.CurrencySymbol, pb.ProductPrice)
+product, err := client.Product.Details(ctx, "C8734")
+if err != nil {
+	// handle error
 }
 
-// Specifications
-for _, param := range product.ParamVOList {
-    fmt.Printf("%s: %s\n", param.ParamNameEn, param.ParamValueEn)
-}
+fmt.Println(product.ProductCode)
+fmt.Println(product.ProductModel)
+fmt.Println(product.BrandNameEn)
+fmt.Println(product.PdfURL)
+fmt.Println(product.GetProductURL())
 ```
 
-## Data Types
+## Configuration Options
 
-### Product
+```go
+client := lcsc.NewClient(
+	lcsc.WithHTTPClient(&http.Client{Timeout: 60 * time.Second}),
+	lcsc.WithBaseURL("https://wmsc.lcsc.com/ftps/wm"),
+	lcsc.WithCurrency("EUR"),
+	lcsc.WithRateLimit(10),
+	lcsc.WithCache(lcsc.NewMemoryCache(10*time.Minute)),
+	lcsc.WithCacheConfig(lcsc.CacheConfig{
+		Enabled:    true,
+		SearchTTL:  2 * time.Minute,
+		DetailsTTL: 5 * time.Minute,
+	}),
+	lcsc.WithRetryConfig(lcsc.RetryConfig{
+		MaxRetries:     5,
+		InitialBackoff: 300 * time.Millisecond,
+		MaxBackoff:     10 * time.Second,
+		Multiplier:     2.0,
+		Jitter:         0.1,
+	}),
+)
+defer client.Close()
+```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| ProductCode | string | LCSC part number (e.g., "C12345") |
-| ProductModel | string | Manufacturer part number |
-| BrandNameEn | string | Manufacturer name |
-| ProductIntroEn | string | Product description |
-| PdfUrl | string | Datasheet URL |
-| ProductImages | []string | Product image URLs |
-| ProductImageUrl | string | Primary image URL |
-| StockNumber | int | Available stock |
-| MinPacketNumber | int | Minimum order quantity |
-| ProductPriceList | []PriceBreak | Quantity price breaks |
-| ParamVOList | []Parameter | Product specifications |
-| EncapStandard | string | Package/footprint |
-| ParentCatalogName | string | Parent category |
-| CatalogName | string | Subcategory |
-| Weight | float64 | Weight in grams |
+### Cache Controls
 
-### PriceBreak
+```go
+client := lcsc.NewClient()
+defer client.Close()
 
-| Field | Type | Description |
-|-------|------|-------------|
-| Ladder | int | Minimum quantity for this price |
-| ProductPrice | float64 | Unit price |
-| CurrencySymbol | string | Currency symbol (e.g., "US$") |
+client.ClearCache()
 
-### Parameter
+clientNoCache := lcsc.NewClient(lcsc.WithoutCache())
+defer clientNoCache.Close()
+```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| ParamNameEn | string | Parameter name |
-| ParamValueEn | string | Parameter value |
+### Retry Controls
+
+```go
+client := lcsc.NewClient(lcsc.WithoutRetry())
+defer client.Close()
+```
 
 ## Error Handling
 
 ```go
-if errors.Is(err, lcsc.ErrProductNotFound) {
-    // Product not found (404)
-}
-if errors.Is(err, lcsc.ErrRateLimited) {
-    // Rate limited (429)
-}
-if errors.Is(err, lcsc.ErrServiceUnavailable) {
-    // Service unavailable (503)
+import "errors"
+
+_, err := client.Product.Details(ctx, "C99999999")
+if err != nil {
+	if errors.Is(err, lcsc.ErrInvalidRequest) {
+		// bad input
+	}
+	if errors.Is(err, lcsc.ErrNotFound) {
+		// no component found
+	}
+	if errors.Is(err, lcsc.ErrRateLimited) {
+		// upstream rate limited
+	}
+	if errors.Is(err, lcsc.ErrServer) {
+		// upstream server failure
+	}
+
+	var apiErr *lcsc.APIError
+	if errors.As(err, &apiErr) {
+		fmt.Println(apiErr.StatusCode, apiErr.Code, apiErr.Message)
+	}
 }
 ```
 
-## Supported Currencies
+## Breaking Changes In v1.0.0
 
-Currency is set via the `WithCurrency()` option. Common values:
-- `USD` - US Dollar (default)
-- `EUR` - Euro
-- `GBP` - British Pound
-- `CNY` - Chinese Yuan
-- `JPY` - Japanese Yen
-- `AUD` - Australian Dollar
-- `CAD` - Canadian Dollar
+- Removed flat client methods:
+  - `client.KeywordSearch(...)`
+  - `client.GetProductDetails(...)`
+- Replaced with service methods:
+  - `client.Search.Keyword(...)`
+  - `client.Product.Details(...)`
+- Removed legacy search request fields that were ignored by the upstream endpoint.
+- Standardized errors to:
+  - `ErrInvalidRequest`
+  - `ErrNotFound`
+  - `ErrRateLimited`
+  - `ErrServer`
+- Product struct field names standardized to Go initialisms:
+  - `PdfUrl` -> `PdfURL`
+  - `ProductImageUrl` -> `ProductImageURL`
 
 ## Testing
 
-This library includes comprehensive unit and integration tests:
+### Unit tests
 
 ```bash
-# Run all tests (unit tests only, ~1.8s)
 go test ./...
-
-# Run with coverage report
-go test ./... -cover
-
-# Generate coverage HTML report
-go test ./... -coverprofile=coverage.out
-go tool cover -html=coverage.out
-
-# Run integration tests (makes real API calls, ~1.8s)
-go test -run Integration ./...
-
-# Run specific test
-go test -run TestKeywordSearchBasic ./...
 ```
 
-**Test Coverage**: 88.8%
-- Unit tests: Fast, no external dependencies
-- Integration tests: Real API calls to LCSC, can be run separately
-
-## Development
-
-### Code Quality
+### Integration tests (real LCSC API)
 
 ```bash
-# Run linter
-golangci-lint run ./...
-
-# Run type checker
-go vet ./...
-
-# Format code
-go fmt ./...
+go test -tags=integration -run Integration ./...
 ```
-
-### Project Structure
-
-```
-.
-├── *.go              # Main library code
-├── *_test.go         # Unit tests
-├── *_integration_test.go  # Integration tests (real API calls)
-├── examples/         # Example usage
-├── .github/workflows/
-│   ├── test.yml      # CI/CD: Unit tests on each push
-│   └── release.yml   # Release workflow
-├── go.mod            # Module definition
-└── README.md         # Documentation
-```
-
-### Adding to Your Project
-
-1. **Import the package**:
-   ```go
-   import "github.com/PatrickWalther/go-lcsc"
-   ```
-
-2. **Create a client**:
-   ```go
-   client := lcsc.NewClient()
-   ```
-
-3. **Use the API methods**:
-   ```go
-   results, err := client.KeywordSearch(ctx, lcsc.SearchRequest{
-       Keyword: "STM32F103",
-   })
-   ```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure `go test ./...` and `golangci-lint run ./...` pass
-5. Submit a pull request
-
-## Acknowledgments
-
-- [LCSC](https://lcsc.com) for providing the electronics components API
-- [Part-DB](https://github.com/Part-DB/Part-DB-server) for the API endpoint discovery
+MIT - see [LICENSE](LICENSE).

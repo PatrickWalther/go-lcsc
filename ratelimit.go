@@ -17,6 +17,10 @@ type RateLimiter struct {
 
 // NewRateLimiter creates a new rate limiter with the specified requests per second.
 func NewRateLimiter(requestsPerSecond float64) *RateLimiter {
+	if requestsPerSecond <= 0 {
+		requestsPerSecond = 1
+	}
+
 	return &RateLimiter{
 		tokens:     requestsPerSecond,
 		maxTokens:  requestsPerSecond,
@@ -44,6 +48,9 @@ func (r *RateLimiter) Wait(ctx context.Context) error {
 		}
 
 		waitTime := time.Duration((1-r.tokens)/r.refillRate*1000) * time.Millisecond
+		if waitTime <= 0 {
+			waitTime = time.Millisecond
+		}
 		r.mu.Unlock()
 
 		select {

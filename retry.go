@@ -2,6 +2,7 @@ package lcsc
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"net"
 	"net/http"
@@ -38,26 +39,36 @@ func NoRetry() RetryConfig {
 
 // shouldRetry determines if a request should be retried based on the error.
 func shouldRetry(err error, statusCode int) bool {
-	if err != nil {
-		if isTemporaryNetworkError(err) {
-			return true
-		}
-		if isTimeoutError(err) {
-			return true
-		}
+	switch statusCode {
+	case http.StatusTooManyRequests, http.StatusInternalServerError,
+		http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
 	}
 
-	switch statusCode {
-	case http.StatusTooManyRequests: // 429
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
 		return true
-	case http.StatusInternalServerError: // 500
+	}
+
+	if isTemporaryNetworkError(err) {
 		return true
-	case http.StatusBadGateway: // 502
+	}
+	if isTimeoutError(err) {
 		return true
-	case http.StatusServiceUnavailable: // 503
-		return true
-	case http.StatusGatewayTimeout: // 504
-		return true
+	}
+
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		code := apiErr.Code
+		if code == 0 {
+			code = apiErr.StatusCode
+		}
+		switch code {
+		case 429, 500, 502, 503, 504:
+			return true
+		}
 	}
 
 	return false
@@ -65,30 +76,17 @@ func shouldRetry(err error, statusCode int) bool {
 
 // isTemporaryNetworkError checks if the error is a temporary network error.
 func isTemporaryNetworkError(err error) bool {
-	if netErr, ok := err.(net.Error); ok {
-		// Check for temporary errors without using deprecated Temporary() method
-		return netErr.Timeout() || isTemporaryNetErr(netErr)
-	}
-	return false
-}
-
-// isTemporaryNetErr checks if a network error is temporary.
-func isTemporaryNetErr(err net.Error) bool {
-	if _, ok := err.(*net.OpError); ok {
-		// OpError is considered temporary if it's not a timeout
-		// Most transient errors are timeouts, so we're conservative here
-		return false
-	}
-	if _, ok := err.(*net.DNSError); ok {
-		// DNS errors can be temporary
-		return false
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return netErr.Timeout()
 	}
 	return false
 }
 
 // isTimeoutError checks if the error is a timeout error.
 func isTimeoutError(err error) bool {
-	if netErr, ok := err.(net.Error); ok {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
 		return netErr.Timeout()
 	}
 	return false
