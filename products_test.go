@@ -15,7 +15,7 @@ func TestSearchKeywordSuccess(t *testing.T) {
 		if req.Method != http.MethodPost {
 			t.Fatalf("expected POST, got %s", req.Method)
 		}
-		if req.URL.Path != "/ftps/wm/search/v2/global" {
+		if req.URL.Path != "/ftps/wm/search/v3/global" {
 			t.Fatalf("unexpected path: %s", req.URL.Path)
 		}
 		body := mustReadBody(t, req)
@@ -66,6 +66,120 @@ func TestSearchKeywordSuccess(t *testing.T) {
 	}
 	if resp.DirectMatchCode != "C123" {
 		t.Fatalf("unexpected direct match: %s", resp.DirectMatchCode)
+	}
+}
+
+func TestSearchKeywordFallbackToProductQueryList(t *testing.T) {
+	// v3/global no longer returns product lists for keyword searches; the
+	// client must fall back to /product/query/list.
+	var paths []string
+	httpClient := newTestHTTPClient(func(req *http.Request) (*http.Response, error) {
+		paths = append(paths, req.URL.Path)
+		switch req.URL.Path {
+		case "/ftps/wm/search/v3/global":
+			return jsonResponse(http.StatusOK, `{
+				"code": 200,
+				"msg": null,
+				"result": {
+					"productSearchResultVO": null,
+					"tipProductDetailUrlVO": null,
+					"scene": "FULL_MATCH",
+					"totalCount": 129
+				}
+			}`), nil
+		case "/ftps/wm/product/query/list":
+			body := mustReadBody(t, req)
+			if !strings.Contains(body, `"keyword":"STM32F103"`) {
+				t.Fatalf("unexpected fallback body: %s", body)
+			}
+			return jsonResponse(http.StatusOK, `{
+				"code": 200,
+				"msg": null,
+				"result": {
+					"totalRow": 129,
+					"dataList": [
+						{"productCode": "C8734", "productModel": "STM32F103C8T6"}
+					]
+				}
+			}`), nil
+		default:
+			t.Fatalf("unexpected path: %s", req.URL.Path)
+			return nil, nil
+		}
+	})
+
+	client := NewClient(
+		WithBaseURL("https://wmsc.lcsc.com/ftps/wm"),
+		WithHTTPClient(httpClient),
+		WithoutRetry(),
+		WithoutCache(),
+	)
+	defer func() { _ = client.Close() }()
+
+	resp, err := client.Search.Keyword(context.Background(), &SearchRequest{Keyword: "STM32F103"})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+
+	if len(paths) != 2 {
+		t.Fatalf("expected 2 requests, got %v", paths)
+	}
+	if len(resp.Products) != 1 || resp.Products[0].ProductCode != "C8734" {
+		t.Fatalf("unexpected products: %+v", resp.Products)
+	}
+	if resp.TotalCount != 129 {
+		t.Fatalf("expected total count 129, got %d", resp.TotalCount)
+	}
+}
+
+func TestSearchKeywordDirectMatchStillReturnsProducts(t *testing.T) {
+	// Callers that only read Products (not DirectMatchCode) must still get
+	// results for exact-code/MPN keywords.
+	httpClient := newTestHTTPClient(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.Path {
+		case "/ftps/wm/search/v3/global":
+			return jsonResponse(http.StatusOK, `{
+				"code": 200,
+				"msg": null,
+				"result": {
+					"productSearchResultVO": null,
+					"isToDetail": true,
+					"tipProductDetailUrlVO": {"productCode": "C8734"}
+				}
+			}`), nil
+		case "/ftps/wm/product/query/list":
+			return jsonResponse(http.StatusOK, `{
+				"code": 200,
+				"msg": null,
+				"result": {
+					"totalRow": 1,
+					"dataList": [{"productCode": "C8734", "productModel": "STM32F103C8T6"}]
+				}
+			}`), nil
+		default:
+			t.Fatalf("unexpected path: %s", req.URL.Path)
+			return nil, nil
+		}
+	})
+
+	client := NewClient(
+		WithBaseURL("https://wmsc.lcsc.com/ftps/wm"),
+		WithHTTPClient(httpClient),
+		WithoutRetry(),
+		WithoutCache(),
+	)
+	defer func() { _ = client.Close() }()
+
+	resp, err := client.Search.Keyword(context.Background(), &SearchRequest{Keyword: "C8734"})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+
+	if resp.DirectMatchCode != "C8734" {
+		t.Fatalf("unexpected direct match: %s", resp.DirectMatchCode)
+	}
+	if len(resp.Products) != 1 || resp.Products[0].ProductCode != "C8734" {
+		t.Fatalf("unexpected products: %+v", resp.Products)
 	}
 }
 

@@ -29,6 +29,17 @@ type searchRequestBody struct {
 	Keyword string `json:"keyword"`
 }
 
+type productListRequestBody struct {
+	Keyword     string `json:"keyword"`
+	CurrentPage int    `json:"currentPage"`
+	PageSize    int    `json:"pageSize"`
+}
+
+type productListWrapper struct {
+	TotalRow int       `json:"totalRow"`
+	DataList []Product `json:"dataList"`
+}
+
 type searchResponseWrapper struct {
 	ProductSearchResultVO struct {
 		ProductList []Product `json:"productList"`
@@ -62,7 +73,7 @@ func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*Searc
 	}
 
 	var wrapper searchResponseWrapper
-	if err := client.do(ctx, http.MethodPost, "/search/v2/global", nil, searchRequestBody{Keyword: keyword}, &wrapper); err != nil {
+	if err := client.do(ctx, http.MethodPost, "/search/v3/global", nil, searchRequestBody{Keyword: keyword}, &wrapper); err != nil {
 		return nil, err
 	}
 
@@ -72,6 +83,19 @@ func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*Searc
 	}
 	if wrapper.TipProductDetailURLVO != nil && wrapper.TipProductDetailURLVO.ProductCode != "" {
 		resp.DirectMatchCode = wrapper.TipProductDetailURLVO.ProductCode
+	}
+
+	// search/v3/global only routes (direct match, categories); it no longer
+	// returns product lists. Those moved to /product/query/list, which still
+	// accepts plain keywords.
+	if len(resp.Products) == 0 {
+		var list productListWrapper
+		body := productListRequestBody{Keyword: keyword, CurrentPage: 1, PageSize: 25}
+		if err := client.do(ctx, http.MethodPost, "/product/query/list", nil, body, &list); err != nil {
+			return nil, err
+		}
+		resp.Products = list.DataList
+		resp.TotalCount = list.TotalRow
 	}
 
 	if client.cacheConfig.Enabled && client.cache != nil {
