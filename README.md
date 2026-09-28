@@ -90,12 +90,37 @@ for _, p := range resp.Products {
 if resp.DirectMatchCode != "" {
 	fmt.Println("direct match:", resp.DirectMatchCode)
 }
+
+if resp.ParametricQuery {
+	fmt.Println("LCSC cannot list parts for a parameter query")
+}
 ```
+
+`Keyword` sends the keyword to `/search/v3/global`. It uses the first source that has products:
+
+1. The product list of the v3 response.
+2. The exact match list of the v3 response (`exactMatchResult`). LCSC fills this list for model keywords such as `RP2040`.
+3. The `/product/query/list` endpoint. The client uses this fallback only in these cases:
+   - LCSC classifies the keyword as a product model (`PRODUCT_MODEL`).
+   - LCSC gives a direct match code.
+   - The v3 response has no classification.
+
+The fallback endpoint can return popular parts that do not match the keyword. The client keeps a fallback row only when one of these conditions is true:
+
+- The product model contains the keyword.
+- The product code is equal to the keyword.
+- The product code is equal to the direct match code.
+
+The comparison ignores case, white space, dashes and dots. When the client drops rows, `TotalCount` is the number of rows that it keeps.
+
+LCSC can classify a keyword as a parameter or package query, for example `100nF 0402`. Then the keyword endpoints cannot give a product list. For this case, the client does not send the fallback request. It returns an empty `Products` list, sets `ParametricQuery` to `true`, and returns no error.
+
+`QueryTypes` holds the raw classification from LCSC, for example `["STANDARD", "PRODUCT_PARAM"]` or `["PRODUCT_MODEL"]`.
 
 ### Product Service
 
 ```go
-product, err := client.Product.Details(ctx, "C8734")
+product, err := client.Product.Details(ctx, "C1525")
 if err != nil {
 	// handle error
 }
@@ -105,7 +130,45 @@ fmt.Println(product.ProductModel)
 fmt.Println(product.BrandNameEn)
 fmt.Println(product.PdfURL)
 fmt.Println(product.GetProductURL())
+
+// Order limits and lifecycle.
+fmt.Println(product.MinBuyNumber) // minimum order quantity
+fmt.Println(product.Split)        // order multiple
+fmt.Println(product.ProductCycle) // for example "normal"
+fmt.Println(product.IsPreSale)
+
+// Alternates that LCSC selects (up to five).
+for _, alt := range product.AlternatePartList {
+	fmt.Println(alt.ProductCode, alt.ProductModel, alt.MatchType)
+}
+
+// Parameters.
+for _, param := range product.ParamVOList {
+	fmt.Println(param.ParamCode, param.ParamNameEn, param.ParamValueEn, param.IsMain)
+	if v := param.ParamValueEnForSearch; v != nil && *v != -1 {
+		fmt.Println("numeric value:", *v)
+	}
+}
 ```
+
+Product fields:
+
+| Field | JSON | Description |
+|---|---|---|
+| `MinBuyNumber` | `minBuyNumber` | Minimum order quantity. |
+| `Split` | `split` | Order multiple. |
+| `ProductCycle` | `productCycle` | Lifecycle status, for example `normal`. |
+| `IsPreSale` | `isPreSale` | `true` when LCSC sells the product as a pre-sale item. |
+| `AlternatePartList` | `alternatePartList` | Alternates that LCSC selects (up to five). Only `Details` fills this list. |
+| `MatchType` | `matchType` | Match code of an alternate, for example `"1"`, `"4"`, `"5"` or `"6"`. LCSC does not document the codes. The type is `FlexString`, which accepts a JSON string, number or null. |
+
+Parameter fields:
+
+| Field | JSON | Description |
+|---|---|---|
+| `ParamCode` | `paramCode` | LCSC identifier of the parameter, for example `param_10951_n`. |
+| `ParamValueEnForSearch` | `paramValueEnForSearch` | Numeric value that LCSC uses for parametric search. It uses base units, but capacitance is in pF (100nF gives `100000`). It is `nil` or `-1` when the value is not a single number. |
+| `IsMain` | `isMain` | `true` for the key parameters. A JSON null gives `false`. |
 
 ## Configuration Options
 
@@ -177,6 +240,18 @@ if err != nil {
 	}
 }
 ```
+
+## Changes In v1.1.0
+
+All changes are additive. Existing code compiles without changes.
+
+- `Search.Keyword` reads `exactMatchResult` from the v3 response.
+- `Search.Keyword` does not send the fallback request for parameter queries. It returns an empty result with `ParametricQuery` set to `true`.
+- `Search.Keyword` drops fallback rows that do not match the keyword.
+- New `SearchResponse` fields: `QueryTypes` and `ParametricQuery`.
+- New `Product` fields: `MinBuyNumber`, `Split`, `ProductCycle`, `IsPreSale`, `MatchType` and `AlternatePartList`.
+- New `Parameter` fields: `ParamCode`, `ParamValueEnForSearch` and `IsMain`.
+- New type `FlexString`.
 
 ## Breaking Changes In v1.0.0
 

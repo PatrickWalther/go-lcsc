@@ -3,6 +3,8 @@ package lcsc
 import (
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -34,6 +36,17 @@ func mustReadBody(t *testing.T, req *http.Request) string {
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		t.Fatalf("failed to read request body: %v", err)
+	}
+	return string(data)
+}
+
+// mustReadFixture returns the content of a file in testdata. The files are
+// trimmed copies of live LCSC responses.
+func mustReadFixture(t *testing.T, name string) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("testdata", name))
+	if err != nil {
+		t.Fatalf("failed to read fixture %s: %v", name, err)
 	}
 	return string(data)
 }

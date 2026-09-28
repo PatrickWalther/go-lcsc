@@ -1,0 +1,58 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "productSearchResultVO": null,
+    "productTotalPage": null,
+    "isToDetail": null,
+    "isToBrand": null,
+    "isToCategory": false,
+    "tipProductDetailUrlVO": null,
+    "searchEngineProcess": {
+      "preprocessedContent": "100nF 0402",
+      "judgeProcess": "0402->\u5c01\u88c5\r\n100nf->\u666e\u901a\u53c2\u6570\r\n100nf->\u6838\u5fc3\u53c2\u6570\r\n",
+      "isNormal": null,
+      "searchValidWord": "0402 100nf",
+      "searchValidWordLight": null,
+      "hasModelSuggest": null,
+      "againJudgeHasResult": null,
+      "hasReplaceKeyword": null,
+      "judgeSuccessType": [
+        "STANDARD",
+        "PRODUCT_PARAM"
+      ],
+      "mappingCodeSet": null
+    },
+    "scene": "FULL_MATCH",
+    "totalCount": 875,
+    "brandVOS": [
+      {
+        "brandId": 18510,
+        "brandNameEn": "AIDE CAPACITOR",
+        "productNum": 3
+      },
+      {
+        "brandId": 11767,
+        "brandNameEn": "AMOTECH",
+        "productNum": 3
+      }
+    ],
+    "exactMatchResult": null,
+    "topResults": [
+      {
+        "catalogId": 1142,
+        "catalogNameEn": "Ceramic Capacitors",
+        "parentId": 495,
+        "parentName": "Capacitors",
+        "level": 3,
+        "productNum": 864,
+        "hasExactMatch": null,
+        "childCatalogs": [],
+        "rootCatalogId": 30,
+        "rootCatalogName": "Passives",
+        "relationProductImage": "https://assets.lcsc.com/images/lcsc/900x900/20221231_Walsin-Tech-Corp-0603B102K500CT_C99917_front.jpg"
+      }
+    ]
+  },
+  "ok": true
+}

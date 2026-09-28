@@ -11,4 +11,4 @@
 package lcsc
 
 // Version is the current version of the go-lcsc package.
-const Version = "1.0.0"
+const Version = "1.1.0"

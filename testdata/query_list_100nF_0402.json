@@ -1,0 +1,194 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "currPage": 1,
+    "pageRow": 25,
+    "totalPage": 200,
+    "totalRow": 5000,
+    "actualTotalRow": 178465,
+    "dataList": [
+      {
+        "productCode": "C1591",
+        "productModel": "CL10B104KB8NNNC",
+        "brandNameEn": "Samsung Electro-Mechanics",
+        "productIntroEn": "100nF \u00b110% 50V Ceramic Capacitor X7R 0603",
+        "encapStandard": "0603",
+        "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+        "parentCatalogName": "Capacitors",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C1591",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221227_Samsung-Electro-Mechanics-CL10B104KB8NNNC_C1591_front.jpg",
+        "stockNumber": 1247100,
+        "minPacketNumber": 4000,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "split": 100,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.041,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0085",
+            "usdPrice": 0.0085,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      },
+      {
+        "productCode": "C14663",
+        "productModel": "CC0603KRX7R9BB104",
+        "brandNameEn": "YAGEO",
+        "productIntroEn": "100nF \u00b110% 50V Ceramic Capacitor X7R 0603",
+        "encapStandard": "0603",
+        "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+        "parentCatalogName": "Capacitors",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/23ccee80ee542e7cf156a772bb589942.pdf?productCode=C14663",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20250715_YAGEO-CC0603KRX7R9BB104_C14663_front.jpg",
+        "stockNumber": 9422700,
+        "minPacketNumber": 4000,
+        "minBuyNumber": 50,
+        "maxBuyNumber": -1,
+        "split": 50,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.037,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 50,
+            "productPrice": "0.0124",
+            "usdPrice": 0.0124,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      },
+      {
+        "productCode": "C1525",
+        "productModel": "CL05B104KO5NNNC",
+        "brandNameEn": "Samsung Electro-Mechanics",
+        "productIntroEn": "100nF \u00b110% 16V Ceramic Capacitor X7R 0402",
+        "encapStandard": "0402",
+        "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+        "parentCatalogName": "Capacitors",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C1525",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221227_Samsung-Electro-Mechanics-CL05B104KO5NNNC_C1525_front.jpg",
+        "stockNumber": 1433400,
+        "minPacketNumber": 10000,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "split": 100,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.013,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0045",
+            "usdPrice": 0.0045,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      },
+      {
+        "productCode": "C60490",
+        "productModel": "RC0402FR-0710KL",
+        "brandNameEn": "YAGEO",
+        "productIntroEn": "62.5mW 10k\u03a9 50V Thick Film Resistor \u00b1100ppm/\u2103 \u00b11% 0402 Chip Resistor - Surface Mount RoHS",
+        "encapStandard": "0402",
+        "catalogName": "Chip Resistor - Surface Mount",
+        "parentCatalogName": "Resistors",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/b426be3ce22c6de3e0c3a2248e49159e.pdf?productCode=C60490",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20250824_YAGEO-RC0402FR-0710KL_C60490_front.jpg",
+        "stockNumber": 5485000,
+        "minPacketNumber": 10000,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "split": 100,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.01,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0023",
+            "usdPrice": 0.0023,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      },
+      {
+        "productCode": "C49678",
+        "productModel": "CC0805KRX7R9BB104",
+        "brandNameEn": "YAGEO",
+        "productIntroEn": "100nF \u00b110% 50V Ceramic Capacitor X7R 0805",
+        "encapStandard": "0805",
+        "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+        "parentCatalogName": "Capacitors",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/23ccee80ee542e7cf156a772bb589942.pdf?productCode=C49678",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221230_YAGEO-CC0805KRX7R9BB104_C49678_front.jpg",
+        "stockNumber": 8405880,
+        "minPacketNumber": 4000,
+        "minBuyNumber": 20,
+        "maxBuyNumber": -1,
+        "split": 20,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.039,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 20,
+            "productPrice": "0.0192",
+            "usdPrice": 0.0192,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      },
+      {
+        "productCode": "C60474",
+        "productModel": "CC0402KRX7R7BB104",
+        "brandNameEn": "YAGEO",
+        "productIntroEn": "100nF \u00b110% 16V Ceramic Capacitor X7R 0402",
+        "encapStandard": "0402",
+        "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+        "parentCatalogName": "Capacitors",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/23ccee80ee542e7cf156a772bb589942.pdf?productCode=C60474",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221230_YAGEO-CC0402KRX7R7BB104_C60474_front.jpg",
+        "stockNumber": 14490600,
+        "minPacketNumber": 10000,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "split": 100,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.012,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0049",
+            "usdPrice": 0.0049,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      }
+    ]
+  },
+  "ok": true
+}

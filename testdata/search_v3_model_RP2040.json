@@ -1,0 +1,94 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "productSearchResultVO": null,
+    "productTotalPage": null,
+    "isToDetail": null,
+    "isToBrand": null,
+    "isToCategory": false,
+    "tipProductDetailUrlVO": null,
+    "searchEngineProcess": {
+      "preprocessedContent": "RP2040",
+      "judgeProcess": "rp2040->\u5546\u54c1\u578b\u53f7\r\n",
+      "isNormal": null,
+      "searchValidWord": "rp2040",
+      "searchValidWordLight": null,
+      "hasModelSuggest": null,
+      "againJudgeHasResult": null,
+      "hasReplaceKeyword": null,
+      "judgeSuccessType": [
+        "PRODUCT_MODEL"
+      ],
+      "mappingCodeSet": null
+    },
+    "scene": "FULL_MATCH",
+    "totalCount": 10,
+    "brandVOS": [
+      {
+        "brandId": 13265,
+        "brandNameEn": "Olimex Ltd.",
+        "productNum": 3
+      },
+      {
+        "brandId": 1213,
+        "brandNameEn": "Raspberry Pi",
+        "productNum": 1
+      }
+    ],
+    "exactMatchResult": [
+      {
+        "productCode": "C2040",
+        "productModel": "RP2040",
+        "brandNameEn": "Raspberry Pi",
+        "productIntroEn": "ARM Cortex-M0+ 32 Bit 133MHz LQFN-56(7x7) Microcontrollers ",
+        "encapStandard": "LQFN-56(7x7)",
+        "catalogName": "Microcontrollers (MCU/MPU/SOC)",
+        "parentCatalogName": "Embedded Processors & Controllers",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/3dad1d8f987a4e00bfc677055df1f959.pdf?productCode=C2040",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20230217_Raspberry-Pi-RP2040_C2040_front.jpg",
+        "stockNumber": 64891,
+        "minPacketNumber": 3400,
+        "minBuyNumber": 1,
+        "maxBuyNumber": -1,
+        "split": 1,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.18,
+        "hasAlternatePart": false,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 1,
+            "productPrice": "0.9975",
+            "usdPrice": 0.9975,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 10,
+            "productPrice": "0.9089",
+            "usdPrice": 0.9089,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": null
+      }
+    ],
+    "topResults": [
+      {
+        "catalogId": 941,
+        "catalogNameEn": "Microcontrollers",
+        "parentId": 258,
+        "parentName": "Embedded",
+        "level": 3,
+        "productNum": 1,
+        "hasExactMatch": null,
+        "childCatalogs": [],
+        "rootCatalogId": 17,
+        "rootCatalogName": "Integrated Circuits (ICs)",
+        "relationProductImage": "https://assets.lcsc.com/images/lcsc/900x900/20221231_Microchip-Tech-PIC16F1615-E-ST_C99982_front.jpg"
+      }
+    ]
+  },
+  "ok": true
+}

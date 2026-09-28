@@ -1,0 +1,164 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "currPage": 1,
+    "pageRow": 25,
+    "totalPage": 1,
+    "totalRow": 5,
+    "actualTotalRow": 5,
+    "dataList": [
+      {
+        "productCode": "C2040",
+        "productModel": "RP2040",
+        "brandNameEn": "Raspberry Pi",
+        "productIntroEn": "ARM Cortex-M0+ 32 Bit 133MHz LQFN-56(7x7) Microcontrollers ",
+        "encapStandard": "LQFN-56(7x7)",
+        "catalogName": "Microcontrollers (MCU/MPU/SOC)",
+        "parentCatalogName": "Embedded Processors & Controllers",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/3dad1d8f987a4e00bfc677055df1f959.pdf?productCode=C2040",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20230217_Raspberry-Pi-RP2040_C2040_front.jpg",
+        "stockNumber": 64891,
+        "minPacketNumber": 3400,
+        "minBuyNumber": 1,
+        "maxBuyNumber": -1,
+        "split": 1,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.18,
+        "hasAlternatePart": false,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 1,
+            "productPrice": "0.9975",
+            "usdPrice": 0.9975,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      },
+      {
+        "productCode": "C1591",
+        "productModel": "CL10B104KB8NNNC",
+        "brandNameEn": "Samsung Electro-Mechanics",
+        "productIntroEn": "100nF \u00b110% 50V Ceramic Capacitor X7R 0603",
+        "encapStandard": "0603",
+        "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+        "parentCatalogName": "Capacitors",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C1591",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221227_Samsung-Electro-Mechanics-CL10B104KB8NNNC_C1591_front.jpg",
+        "stockNumber": 1247100,
+        "minPacketNumber": 4000,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "split": 100,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.041,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0085",
+            "usdPrice": 0.0085,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      },
+      {
+        "productCode": "C5350143",
+        "productModel": "RP2040-Zero",
+        "brandNameEn": "Waveshare",
+        "productIntroEn": "Embedded MCU, DSP Evaluation Boards ",
+        "encapStandard": "-",
+        "catalogName": "Development Boards & Kits",
+        "parentCatalogName": "Development Boards & Tools",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/43467edfb0e76105a1646b9ff6e89e95.pdf?productCode=C5350143",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20230328_Waveshare-RP2040-Zero_C5350143_front.jpg",
+        "stockNumber": 0,
+        "minPacketNumber": 1,
+        "minBuyNumber": 1,
+        "maxBuyNumber": -1,
+        "split": 1,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 3.5,
+        "hasAlternatePart": false,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 1,
+            "productPrice": "6.1177",
+            "usdPrice": 6.1177,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": null
+      },
+      {
+        "productCode": "C60490",
+        "productModel": "RC0402FR-0710KL",
+        "brandNameEn": "YAGEO",
+        "productIntroEn": "62.5mW 10k\u03a9 50V Thick Film Resistor \u00b1100ppm/\u2103 \u00b11% 0402 Chip Resistor - Surface Mount RoHS",
+        "encapStandard": "0402",
+        "catalogName": "Chip Resistor - Surface Mount",
+        "parentCatalogName": "Resistors",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/b426be3ce22c6de3e0c3a2248e49159e.pdf?productCode=C60490",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20250824_YAGEO-RC0402FR-0710KL_C60490_front.jpg",
+        "stockNumber": 5485000,
+        "minPacketNumber": 10000,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "split": 100,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.01,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0023",
+            "usdPrice": 0.0023,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      },
+      {
+        "productCode": "C404027",
+        "productModel": "TLV75533PDBVR",
+        "brandNameEn": "TI",
+        "productIntroEn": "3.3V Positive Fixed SOT-23-5 Voltage Regulators - Linear, Low Drop Out (LDO) Regulators RoHS",
+        "encapStandard": "SOT-23-5",
+        "catalogName": "Voltage Regulators - Linear, Low Drop Out (LDO) Regulators",
+        "parentCatalogName": "Power Management (PMIC)",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/107eeb995f1c91f292b91a59221db472.pdf?productCode=C404027",
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20230115_Texas-Instruments-TLV75533PDBVR_C404027_front.jpg",
+        "stockNumber": 136425,
+        "minPacketNumber": 3000,
+        "minBuyNumber": 5,
+        "maxBuyNumber": -1,
+        "split": 5,
+        "productCycle": "normal",
+        "isPreSale": false,
+        "weight": 0.025,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "productPriceList": [
+          {
+            "ladder": 5,
+            "productPrice": "0.1445",
+            "usdPrice": 0.1445,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": []
+      }
+    ]
+  },
+  "ok": true
+}
