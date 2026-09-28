@@ -99,7 +99,7 @@ if resp.ParametricQuery {
 `Keyword` sends the keyword to `/search/v3/global`. It uses the first source that has products:
 
 1. The product list of the v3 response.
-2. The exact match list of the v3 response (`exactMatchResult`). LCSC fills this list for model keywords such as `RP2040`.
+2. The exact match list of the v3 response (`exactMatchResult`). LCSC fills this list for model keywords such as `RP2040`. `TotalCount` is the length of this list.
 3. The `/product/query/list` endpoint. The client uses this fallback only in these cases:
    - LCSC classifies the keyword as a product model (`PRODUCT_MODEL`).
    - LCSC gives a direct match code.
@@ -111,9 +111,11 @@ The fallback endpoint can return popular parts that do not match the keyword. Th
 - The product code is equal to the keyword.
 - The product code is equal to the direct match code.
 
-The comparison ignores case, white space, dashes and dots. When the client drops rows, `TotalCount` is the number of rows that it keeps.
+The comparison ignores case, white space, dashes and dots. When the keyword is the direct match code (for example `C2040`), the client keeps only the row with that code. When the client drops rows, `TotalCount` is the number of rows that it keeps.
 
 LCSC can classify a keyword as a parameter or package query, for example `100nF 0402`. Then the keyword endpoints cannot give a product list. For this case, the client does not send the fallback request. It returns an empty `Products` list, sets `ParametricQuery` to `true`, and returns no error.
+
+For other classifications without a product list, for example a brand name (`BRAND`), the client also does not send the fallback request. It returns an empty `Products` list and no error. `ParametricQuery` is `false`.
 
 `QueryTypes` holds the raw classification from LCSC, for example `["STANDARD", "PRODUCT_PARAM"]` or `["PRODUCT_MODEL"]`.
 
@@ -243,10 +245,11 @@ if err != nil {
 
 ## Changes In v1.1.0
 
-All changes are additive. Existing code compiles without changes.
+All API changes are additive. Existing code compiles without changes. `Search.Keyword` gives different results for some keywords:
 
-- `Search.Keyword` reads `exactMatchResult` from the v3 response.
+- `Search.Keyword` reads `exactMatchResult` from the v3 response. For a model keyword such as `RP2040`, it can now return only the exact match.
 - `Search.Keyword` does not send the fallback request for parameter queries. It returns an empty result with `ParametricQuery` set to `true`.
+- `Search.Keyword` does not send the fallback request for other classifications, for example a brand name. It returns an empty result.
 - `Search.Keyword` drops fallback rows that do not match the keyword.
 - New `SearchResponse` fields: `QueryTypes` and `ParametricQuery`.
 - New `Product` fields: `MinBuyNumber`, `Split`, `ProductCycle`, `IsPreSale`, `MatchType` and `AlternatePartList`.

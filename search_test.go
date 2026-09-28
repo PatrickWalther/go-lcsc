@@ -329,6 +329,55 @@ func TestSearchKeywordDirectMatchUsesFallback(t *testing.T) {
 	}
 }
 
+func TestSearchKeywordDirectCodeDropsModelsThatContainTheCode(t *testing.T) {
+	// For the keyword "C2040", LCSC gives a direct match and no
+	// classification. The live fallback list also has two unrelated parts
+	// whose model contains "C2040".
+	var paths []string
+	client := newSearchTestClient(func(req *http.Request) (*http.Response, error) {
+		paths = append(paths, req.URL.Path)
+		if req.URL.Path == testQueryListPath {
+			return jsonResponse(http.StatusOK, `{
+				"code": 200,
+				"msg": null,
+				"result": {
+					"totalRow": 3,
+					"dataList": [
+						{"productCode": "C2040", "productModel": "RP2040"},
+						{"productCode": "C575598", "productModel": "PI6C20400BLEX"},
+						{"productCode": "C51908978", "productModel": "G823003271C2040CY"}
+					]
+				}
+			}`), nil
+		}
+		return jsonResponse(http.StatusOK, `{
+			"code": 200,
+			"msg": null,
+			"result": {
+				"productSearchResultVO": null,
+				"tipProductDetailUrlVO": {"productCode": "C2040"},
+				"searchEngineProcess": {"judgeSuccessType": null}
+			}
+		}`), nil
+	})
+	defer func() { _ = client.Close() }()
+
+	resp, err := client.Search.Keyword(context.Background(), &SearchRequest{Keyword: "c2040"})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+
+	if len(paths) != 2 {
+		t.Fatalf("expected 2 requests, got %v", paths)
+	}
+	if got := productCodes(resp.Products); !reflect.DeepEqual(got, []string{"C2040"}) {
+		t.Fatalf("expected [C2040], got %v", got)
+	}
+	if resp.TotalCount != 1 {
+		t.Fatalf("expected total count 1 after filtering, got %d", resp.TotalCount)
+	}
+}
+
 func TestIsParametricQuery(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -375,6 +424,7 @@ func TestFilterRelatedProducts(t *testing.T) {
 		{"code must be equal", "c2040", "", []string{"C2040"}},
 		{"code prefix does not match", "C204", "", nil},
 		{"direct match code", "TLV-X", "C404027", []string{"C404027"}},
+		{"model keyword with direct match", "RP2040", "C2040", []string{"C2040", "C5350143"}},
 		{"parametric keyword", "100nF 0402", "", nil},
 		{"empty after normalization", "- . -", "", nil},
 	}
@@ -384,6 +434,35 @@ func TestFilterRelatedProducts(t *testing.T) {
 			got := filterRelatedProducts(products, tt.keyword, tt.direct)
 			if codes := productCodes(got); len(codes) != len(tt.want) || (len(codes) > 0 && !reflect.DeepEqual(codes, tt.want)) {
 				t.Fatalf("filterRelatedProducts(%q, %q) = %v, want %v", tt.keyword, tt.direct, codes, tt.want)
+			}
+		})
+	}
+}
+
+func TestFilterRelatedProductsKeywordIsDirectCode(t *testing.T) {
+	// Rows from a live /product/query/list response for "C2040".
+	products := []Product{
+		{ProductCode: "C2040", ProductModel: "RP2040"},
+		{ProductCode: "C575598", ProductModel: "PI6C20400BLEX"},
+		{ProductCode: "C51908978", ProductModel: "G823003271C2040CY"},
+	}
+
+	tests := []struct {
+		name    string
+		keyword string
+		direct  string
+		want    []string
+	}{
+		{"keyword is the direct match code", "C2040", "C2040", []string{"C2040"}},
+		{"keyword case differs from the code", "c2040", "C2040", []string{"C2040"}},
+		{"no direct match keeps model matches", "C2040", "", []string{"C2040", "C575598", "C51908978"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := productCodes(filterRelatedProducts(products, tt.keyword, tt.direct))
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("filterRelatedProducts(%q, %q) = %v, want %v", tt.keyword, tt.direct, got, tt.want)
 			}
 		})
 	}

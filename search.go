@@ -26,8 +26,9 @@ type SearchResponse struct {
 	Products []Product
 
 	// TotalCount is the number of matching products that LCSC reports for
-	// the product list in Products. When the client drops unrelated rows
-	// from the fallback list, TotalCount is the number of rows it keeps.
+	// the product list in Products. For the exact match list, TotalCount is
+	// the length of that list. When the client drops unrelated rows from
+	// the fallback list, TotalCount is the number of rows it keeps.
 	TotalCount int
 
 	// DirectMatchCode is the LCSC product code that LCSC links directly to
@@ -96,7 +97,9 @@ const (
 //
 // When LCSC classifies the keyword as a parameter or package query, the
 // client returns an empty result and sets [SearchResponse.ParametricQuery].
-// It does not return an error for this case.
+// For other classifications without a product list, for example a brand,
+// the client returns an empty result. It does not return an error for these
+// cases.
 func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("%w: request is nil", ErrInvalidRequest)
@@ -222,17 +225,25 @@ func allowsFallback(types []string, directMatchCode string) bool {
 //   - The normalized product model contains the normalized keyword.
 //   - The normalized product code is equal to the normalized keyword.
 //   - The product code is equal to the direct match code.
+//
+// When the keyword is the direct match code (for example "C2040"), it keeps
+// only the product with that code. For this keyword, the fallback list also
+// has parts whose model contains the code, for example "PI6C20400BLEX".
+// These parts are not related to the keyword.
 func filterRelatedProducts(products []Product, keyword, directMatchCode string) []Product {
 	needle := normalizeSearchText(keyword)
 	direct := normalizeSearchText(directMatchCode)
+	keywordIsDirectCode := direct != "" && needle == direct
 
 	var kept []Product
 	for _, p := range products {
 		code := normalizeSearchText(p.ProductCode)
 		switch {
+		case direct != "" && code == direct:
+		case keywordIsDirectCode:
+			continue
 		case needle != "" && strings.Contains(normalizeSearchText(p.ProductModel), needle):
 		case needle != "" && code == needle:
-		case direct != "" && code == direct:
 		default:
 			continue
 		}
