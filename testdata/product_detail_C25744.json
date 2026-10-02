@@ -1,0 +1,113 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "productId": 26487,
+    "productCode": "C25744",
+    "productModel": "0402WGF1002TCE",
+    "brandId": 99,
+    "brandNameEn": "UNI-ROYAL",
+    "productIntroEn": "10kΩ ±1% 62.5mW 0402 Thick Film Resistor",
+    "encapStandard": "0402",
+    "catalogName": "Chip Resistor - Surface Mount",
+    "parentCatalogName": "Resistors",
+    "parentCatalogList": [
+      {
+        "catalogId": 30,
+        "catalogNameEn": "Passives"
+      },
+      {
+        "catalogId": 501,
+        "catalogNameEn": "Resistors"
+      }
+    ],
+    "wmCatalogId": 1199,
+    "wmCatalogNameEn": "Chip Resistor - Surface Mount",
+    "stockNumber": 6860700,
+    "stockSz": 6860700,
+    "minBuyNumber": 100,
+    "maxBuyNumber": -1,
+    "minPacketNumber": 10000,
+    "split": 100,
+    "productCycle": "normal",
+    "isNotOverstock": false,
+    "isForeignOnsale": true,
+    "isPreSale": false,
+    "isReel": true,
+    "reelPrice": 3.0,
+    "productArrange": "Tape & Reel (TR)",
+    "eccn": null,
+    "hasThirdPartyStock": false,
+    "flashSaleProductPO": null,
+    "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25744",
+    "currencyType": "USD",
+    "productPriceList": [
+      {
+        "ladder": 100,
+        "productPrice": "0.0034",
+        "usdPrice": 0.0034,
+        "currencyPrice": 0.0034,
+        "currencySymbol": "$"
+      },
+      {
+        "ladder": 1000,
+        "productPrice": "0.0027",
+        "usdPrice": 0.0027,
+        "currencyPrice": 0.0027,
+        "currencySymbol": "$"
+      }
+    ],
+    "paramVOList": [
+      {
+        "paramCode": "param_11205_n",
+        "paramNameEn": "Resistance",
+        "paramValueEn": "10kΩ",
+        "paramValueEnForSearch": 10000.0,
+        "isMain": true
+      },
+      {
+        "paramCode": "param_10837_n",
+        "paramNameEn": "Power(Watts)",
+        "paramValueEn": "62.5mW",
+        "paramValueEnForSearch": 0.0625,
+        "isMain": true
+      },
+      {
+        "paramCode": "param_11204_n",
+        "paramNameEn": "Voltage Rating",
+        "paramValueEn": "50V",
+        "paramValueEnForSearch": 50.0,
+        "isMain": true
+      },
+      {
+        "paramCode": "param_12983_s",
+        "paramNameEn": "Operating Temperature",
+        "paramValueEn": "-55℃~+155℃",
+        "paramValueEnForSearch": null,
+        "isMain": false
+      },
+      {
+        "paramCode": "param_11202",
+        "paramNameEn": "Type",
+        "paramValueEn": "Thick Film Resistor",
+        "paramValueEnForSearch": -1.0,
+        "isMain": true
+      },
+      {
+        "paramCode": "param_11185_s",
+        "paramNameEn": "Temperature Coefficient",
+        "paramValueEn": "±100ppm/℃",
+        "paramValueEnForSearch": null,
+        "isMain": true
+      },
+      {
+        "paramCode": "param_11206_s",
+        "paramNameEn": "Tolerance",
+        "paramValueEn": "±1%",
+        "paramValueEnForSearch": null,
+        "isMain": true
+      }
+    ]
+  },
+  "ok": true
+}

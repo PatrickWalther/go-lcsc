@@ -1,0 +1,176 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "currPage": 1,
+    "pageRow": 50,
+    "totalPage": 1,
+    "totalRow": 32,
+    "dataList": [
+      {
+        "productId": 3180374,
+        "productCode": "C2906861",
+        "productModel": "FRC0402F1002TS",
+        "brandId": 13046,
+        "brandNameEn": "FOJAN",
+        "productIntroEn": "10kΩ ±1% 62.5mW 0402 Thick Film Resistor",
+        "encapStandard": "0402",
+        "catalogName": "Chip Resistor - Surface Mount",
+        "parentCatalogName": "Resistors",
+        "wmCatalogId": 1199,
+        "wmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "firstWmCatalogId": 30,
+        "firstWmCatalogNameEn": "Passives",
+        "secondWmCatalogId": 501,
+        "secondWmCatalogNameEn": "Resistors",
+        "thirdWmCatalogId": 1199,
+        "thirdWmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "fourthWmCatalogId": null,
+        "fourthWmCatalogNameEn": null,
+        "fifthWmCatalogId": null,
+        "fifthWmCatalogNameEn": null,
+        "sixthWmCatalogId": null,
+        "sixthWmCatalogNameEn": null,
+        "stockNumber": 16947800,
+        "stockSz": 16947800,
+        "stockJs": 0,
+        "wmStockHk": 0,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "minPacketNumber": 10000,
+        "split": 100,
+        "productCycle": "normal",
+        "isNotOverstock": false,
+        "isForeignOnsale": true,
+        "isPreSale": false,
+        "isReel": true,
+        "reelPrice": 3.0,
+        "productArrange": "Tape & Reel (TR)",
+        "eccn": null,
+        "moistureSensitivityLevel": null,
+        "hasThirdPartyStock": false,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "flashSaleProductPO": null,
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20250820_FOJAN-FRC0402F1002TS_C2906861_front.jpg",
+        "productImageUrlBig": "https://assets.lcsc.com/images/lcsc/900x900/20250820_FOJAN-FRC0402F1002TS_C2906861_front.jpg",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/106fb934f95f063b695dad1b31b1eab8.pdf?productCode=C2906861",
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0025",
+            "usdPrice": 0.0025,
+            "currencyPrice": 0.0025,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "productPrice": "0.0022",
+            "usdPrice": 0.0022,
+            "currencyPrice": 0.0022,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": [
+          {
+            "paramCode": "param_11205_n",
+            "paramNameEn": "Resistance",
+            "paramValueEn": "10kΩ",
+            "paramValueEnForSearch": 10000.0,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_10837_n",
+            "paramNameEn": "Power(Watts)",
+            "paramValueEn": "62.5mW",
+            "paramValueEnForSearch": 0.0625,
+            "isMain": true
+          }
+        ]
+      },
+      {
+        "productId": 26487,
+        "productCode": "C25744",
+        "productModel": "0402WGF1002TCE",
+        "brandId": 99,
+        "brandNameEn": "UNI-ROYAL",
+        "productIntroEn": "10kΩ ±1% 62.5mW 0402 Thick Film Resistor",
+        "encapStandard": "0402",
+        "catalogName": "Chip Resistor - Surface Mount",
+        "parentCatalogName": "Resistors",
+        "wmCatalogId": 1199,
+        "wmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "firstWmCatalogId": 30,
+        "firstWmCatalogNameEn": "Passives",
+        "secondWmCatalogId": 501,
+        "secondWmCatalogNameEn": "Resistors",
+        "thirdWmCatalogId": 1199,
+        "thirdWmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "fourthWmCatalogId": null,
+        "fourthWmCatalogNameEn": null,
+        "fifthWmCatalogId": null,
+        "fifthWmCatalogNameEn": null,
+        "sixthWmCatalogId": null,
+        "sixthWmCatalogNameEn": null,
+        "stockNumber": 6860700,
+        "stockSz": 6860700,
+        "stockJs": 0,
+        "wmStockHk": 0,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "minPacketNumber": 10000,
+        "split": 100,
+        "productCycle": "normal",
+        "isNotOverstock": false,
+        "isForeignOnsale": true,
+        "isPreSale": false,
+        "isReel": true,
+        "reelPrice": 3.0,
+        "productArrange": "Tape & Reel (TR)",
+        "eccn": null,
+        "moistureSensitivityLevel": null,
+        "hasThirdPartyStock": false,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "flashSaleProductPO": null,
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221229_UNI-ROYAL-Uniroyal-Elec-0402WGF1002TCE_C25744_front.jpg",
+        "productImageUrlBig": "https://assets.lcsc.com/images/lcsc/900x900/20221229_UNI-ROYAL-Uniroyal-Elec-0402WGF1002TCE_C25744_front.jpg",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf?productCode=C25744",
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0034",
+            "usdPrice": 0.0034,
+            "currencyPrice": 0.0034,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "productPrice": "0.0027",
+            "usdPrice": 0.0027,
+            "currencyPrice": 0.0027,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": [
+          {
+            "paramCode": "param_11205_n",
+            "paramNameEn": "Resistance",
+            "paramValueEn": "10kΩ",
+            "paramValueEnForSearch": 10000.0,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_10837_n",
+            "paramNameEn": "Power(Watts)",
+            "paramValueEn": "62.5mW",
+            "paramValueEnForSearch": 0.0625,
+            "isMain": true
+          }
+        ]
+      }
+    ],
+    "actualTotalRow": 32
+  },
+  "ok": true
+}

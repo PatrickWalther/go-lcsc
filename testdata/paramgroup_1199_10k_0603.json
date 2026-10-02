@@ -1,0 +1,197 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "totalCount": 180,
+    "Package": [
+      {
+        "name": "0603"
+      }
+    ],
+    "Manufacturer": [
+      {
+        "id": "377",
+        "name": "BOURNS"
+      },
+      {
+        "id": "18317",
+        "name": "CHANGLONG"
+      },
+      {
+        "id": "512",
+        "name": "EVER OHMS"
+      }
+    ],
+    "Packaging": [
+      {
+        "name": "Bag-packed"
+      },
+      {
+        "name": "Tape & Reel (TR)"
+      }
+    ],
+    "paramNameValueMap": {
+      "Type": {
+        "paramDetailList": [
+          {
+            "name": "Ceramic resistor",
+            "isRange": false,
+            "standardUnitValue": null,
+            "standardUnitEndValue": null
+          },
+          {
+            "name": "Thick Film Resistor",
+            "isRange": false,
+            "standardUnitValue": null,
+            "standardUnitEndValue": null
+          }
+        ],
+        "unitList": [],
+        "unitConversionMap": {}
+      },
+      "Resistance": {
+        "paramDetailList": [
+          {
+            "name": "10kΩ",
+            "isRange": false,
+            "standardUnitValue": "10000",
+            "standardUnitEndValue": null
+          }
+        ],
+        "unitList": [
+          "Ω",
+          "mΩ",
+          "kΩ",
+          "MΩ"
+        ],
+        "unitConversionMap": {
+          "Ω": 1,
+          "mΩ": 0.001,
+          "MΩ": 1000000,
+          "kΩ": 1000
+        }
+      },
+      "Tolerance": {
+        "paramDetailList": [
+          {
+            "name": "±5%",
+            "isRange": true,
+            "standardUnitValue": "-5",
+            "standardUnitEndValue": "5"
+          },
+          {
+            "name": "±1%",
+            "isRange": true,
+            "standardUnitValue": "-1",
+            "standardUnitEndValue": "1"
+          }
+        ],
+        "unitList": [
+          "%",
+          "‰"
+        ],
+        "unitConversionMap": {
+          "‰": 0.1,
+          "%": 1
+        }
+      },
+      "Operating Temperature": {
+        "paramDetailList": [
+          {
+            "name": "-55℃~+155℃",
+            "isRange": true,
+            "standardUnitValue": "-55",
+            "standardUnitEndValue": "155"
+          },
+          {
+            "name": "-55℃~+125℃",
+            "isRange": true,
+            "standardUnitValue": "-55",
+            "standardUnitEndValue": "125"
+          }
+        ],
+        "unitList": [
+          "℃"
+        ],
+        "unitConversionMap": {
+          "℃": 1
+        }
+      },
+      "Voltage Rating": {
+        "paramDetailList": [
+          {
+            "name": "50V",
+            "isRange": false,
+            "standardUnitValue": "50",
+            "standardUnitEndValue": null
+          },
+          {
+            "name": "75V",
+            "isRange": false,
+            "standardUnitValue": "75",
+            "standardUnitEndValue": null
+          }
+        ],
+        "unitList": [
+          "V",
+          "nV",
+          "uV",
+          "mV",
+          "kV"
+        ],
+        "unitConversionMap": {
+          "uV": 1e-06,
+          "V": 1,
+          "nV": 1e-09,
+          "mV": 0.001,
+          "kV": 1000
+        }
+      },
+      "Power(Watts)": {
+        "paramDetailList": [
+          {
+            "name": "37.5mW",
+            "isRange": false,
+            "standardUnitValue": "0.0375",
+            "standardUnitEndValue": null
+          },
+          {
+            "name": "62.5mW",
+            "isRange": false,
+            "standardUnitValue": "0.0625",
+            "standardUnitEndValue": null
+          }
+        ],
+        "unitList": [
+          "W",
+          "mW",
+          "kW"
+        ],
+        "unitConversionMap": {
+          "W": 1,
+          "mW": 0.001,
+          "kW": 1000
+        }
+      },
+      "Temperature Coefficient": {
+        "paramDetailList": [
+          {
+            "name": "±200ppm/℃",
+            "isRange": true,
+            "standardUnitValue": "-200",
+            "standardUnitEndValue": "200"
+          },
+          {
+            "name": "±150ppm/℃",
+            "isRange": true,
+            "standardUnitValue": "-150",
+            "standardUnitEndValue": "150"
+          }
+        ],
+        "unitList": [],
+        "unitConversionMap": {}
+      }
+    }
+  },
+  "ok": true
+}

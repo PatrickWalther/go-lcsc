@@ -1,0 +1,169 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "totalCount": 9193,
+    "Package": [
+      {
+        "name": "008004"
+      },
+      {
+        "name": "01005"
+      },
+      {
+        "name": "0201"
+      },
+      {
+        "name": "0204"
+      }
+    ],
+    "Manufacturer": [
+      {
+        "id": "18510",
+        "name": "AIDE CAPACITOR"
+      },
+      {
+        "id": "11767",
+        "name": "AMOTECH"
+      },
+      {
+        "id": "11714",
+        "name": "CCTC"
+      }
+    ],
+    "Packaging": [
+      {
+        "name": "Bag-packed"
+      },
+      {
+        "name": "Box-packed"
+      },
+      {
+        "name": "Tape & Reel (TR)"
+      }
+    ],
+    "paramNameValueMap": {
+      "Capacitance": {
+        "paramDetailList": [
+          {
+            "name": "100nF",
+            "isRange": false,
+            "standardUnitValue": "100000",
+            "standardUnitEndValue": null
+          },
+          {
+            "name": "100000pF",
+            "isRange": false,
+            "standardUnitValue": "100000",
+            "standardUnitEndValue": null
+          }
+        ],
+        "unitList": [
+          "pF",
+          "nF",
+          "uF",
+          "mF",
+          "F"
+        ],
+        "unitConversionMap": {
+          "uF": 1000000,
+          "pF": 1,
+          "F": 1000000000000,
+          "nF": 1000,
+          "mF": 1000000000
+        }
+      },
+      "Tolerance": {
+        "paramDetailList": [
+          {
+            "name": "±20%",
+            "isRange": true,
+            "standardUnitValue": "-20",
+            "standardUnitEndValue": "20"
+          },
+          {
+            "name": "-20%~+80%",
+            "isRange": true,
+            "standardUnitValue": "-20",
+            "standardUnitEndValue": "80"
+          },
+          {
+            "name": "-20%~+50%",
+            "isRange": true,
+            "standardUnitValue": "-20",
+            "standardUnitEndValue": "50"
+          }
+        ],
+        "unitList": [
+          "%",
+          "‰"
+        ],
+        "unitConversionMap": {
+          "‰": 0.1,
+          "%": 1
+        }
+      },
+      "Voltage Rating": {
+        "paramDetailList": [
+          {
+            "name": "2.5V",
+            "isRange": false,
+            "standardUnitValue": "2.5",
+            "standardUnitEndValue": null
+          },
+          {
+            "name": "4V",
+            "isRange": false,
+            "standardUnitValue": "4",
+            "standardUnitEndValue": null
+          },
+          {
+            "name": "6.3V",
+            "isRange": false,
+            "standardUnitValue": "6.3",
+            "standardUnitEndValue": null
+          }
+        ],
+        "unitList": [
+          "V",
+          "nV",
+          "uV",
+          "mV",
+          "kV"
+        ],
+        "unitConversionMap": {
+          "uV": 1e-06,
+          "V": 1,
+          "nV": 1e-09,
+          "mV": 0.001,
+          "kV": 1000
+        }
+      },
+      "Temperature Coefficient": {
+        "paramDetailList": [
+          {
+            "name": "C0G",
+            "isRange": false,
+            "standardUnitValue": null,
+            "standardUnitEndValue": null
+          },
+          {
+            "name": "M3L",
+            "isRange": false,
+            "standardUnitValue": null,
+            "standardUnitEndValue": null
+          },
+          {
+            "name": "NP0",
+            "isRange": false,
+            "standardUnitValue": "0",
+            "standardUnitEndValue": null
+          }
+        ],
+        "unitList": [],
+        "unitConversionMap": {}
+      }
+    }
+  },
+  "ok": true
+}

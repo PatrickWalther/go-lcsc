@@ -2,9 +2,10 @@
 //
 // Endpoints are organized into service groups:
 //
-//   - client.Search     - keyword search
+//   - client.Search     - keyword, parametric and filter search
 //   - client.Product    - product details
 //   - client.Alternates - cross-reference alternates
+//   - client.Catalog    - category tree
 //
 // LCSC does not provide an official public API for this data. This package
 // uses undocumented endpoints discovered from the web application and they can

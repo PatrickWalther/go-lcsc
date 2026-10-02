@@ -1,0 +1,186 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": [
+    {
+      "categoryId": 12,
+      "categoryNameEn": "Discrete Semiconductors",
+      "categoryNameCn": "分立半导体器件",
+      "enCategoryCode": "0011",
+      "enParentCode": "1",
+      "childrenList": [
+        {
+          "categoryId": 1420,
+          "categoryNameEn": "Transistors",
+          "categoryNameCn": "",
+          "enCategoryCode": "00110011",
+          "enParentCode": "0011",
+          "childrenList": [
+            {
+              "categoryId": 1433,
+              "categoryNameEn": "FETs, MOSFETs",
+              "categoryNameCn": "",
+              "enCategoryCode": "001100110002",
+              "enParentCode": "00110011",
+              "childrenList": [
+                {
+                  "categoryId": 1436,
+                  "categoryNameEn": "Single FETs, MOSFETs",
+                  "categoryNameCn": "",
+                  "enCategoryCode": "0011001100020003",
+                  "enParentCode": "001100110002",
+                  "childrenList": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "categoryId": 15,
+      "categoryNameEn": "Hardware, Fasteners, Accessories",
+      "categoryNameCn": "五金件，紧固件，配件",
+      "enCategoryCode": "0014",
+      "enParentCode": "1",
+      "childrenList": [
+        {
+          "categoryId": 2580,
+          "categoryNameEn": "Washers",
+          "categoryNameCn": "",
+          "enCategoryCode": "00610017",
+          "enParentCode": "0014",
+          "childrenList": [
+            {
+              "categoryId": 1585,
+              "categoryNameEn": "Bushing, Shoulder Washers",
+              "categoryNameCn": null,
+              "enCategoryCode": "006100170001",
+              "enParentCode": "00610017",
+              "childrenList": []
+            },
+            {
+              "categoryId": 1586,
+              "categoryNameEn": "Standard Washers",
+              "categoryNameCn": null,
+              "enCategoryCode": "006100170002",
+              "enParentCode": "00610017",
+              "childrenList": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "categoryId": 30,
+      "categoryNameEn": "Passives",
+      "categoryNameCn": "无源器件",
+      "enCategoryCode": "0029",
+      "enParentCode": "1",
+      "childrenList": [
+        {
+          "categoryId": 495,
+          "categoryNameEn": "Capacitors",
+          "categoryNameCn": null,
+          "enCategoryCode": "00290001",
+          "enParentCode": "0029",
+          "childrenList": [
+            {
+              "categoryId": 1141,
+              "categoryNameEn": "Capacitor Networks, Arrays",
+              "categoryNameCn": null,
+              "enCategoryCode": "002900010004",
+              "enParentCode": "00290001",
+              "childrenList": []
+            },
+            {
+              "categoryId": 1142,
+              "categoryNameEn": "Ceramic Capacitors",
+              "categoryNameCn": null,
+              "enCategoryCode": "002900010005",
+              "enParentCode": "00290001",
+              "childrenList": []
+            }
+          ]
+        },
+        {
+          "categoryId": 501,
+          "categoryNameEn": "Resistors",
+          "categoryNameCn": null,
+          "enCategoryCode": "00290007",
+          "enParentCode": "0029",
+          "childrenList": [
+            {
+              "categoryId": 1199,
+              "categoryNameEn": "Chip Resistor - Surface Mount",
+              "categoryNameCn": null,
+              "enCategoryCode": "002900070003",
+              "enParentCode": "00290007",
+              "childrenList": []
+            },
+            {
+              "categoryId": 1200,
+              "categoryNameEn": "Resistor Networks, Arrays",
+              "categoryNameCn": null,
+              "enCategoryCode": "002900070004",
+              "enParentCode": "00290007",
+              "childrenList": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "categoryId": 1569,
+      "categoryNameEn": "Hardware, Fasteners, Accessories",
+      "categoryNameCn": null,
+      "enCategoryCode": "0061",
+      "enParentCode": "1",
+      "childrenList": [
+        {
+          "categoryId": 1584,
+          "categoryNameEn": "Washers",
+          "categoryNameCn": null,
+          "enCategoryCode": "00610017",
+          "enParentCode": "0061",
+          "childrenList": [
+            {
+              "categoryId": 1585,
+              "categoryNameEn": "Bushing, Shoulder Washers",
+              "categoryNameCn": null,
+              "enCategoryCode": "006100170001",
+              "enParentCode": "00610017",
+              "childrenList": []
+            },
+            {
+              "categoryId": 1586,
+              "categoryNameEn": "Standard Washers",
+              "categoryNameCn": null,
+              "enCategoryCode": "006100170002",
+              "enParentCode": "00610017",
+              "childrenList": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "categoryId": 1729,
+      "categoryNameEn": "Maintenance, Repair & Operations",
+      "categoryNameCn": null,
+      "enCategoryCode": "0091",
+      "enParentCode": "1",
+      "childrenList": [
+        {
+          "categoryId": 1730,
+          "categoryNameEn": "Adhesives & Sealants",
+          "categoryNameCn": null,
+          "enCategoryCode": "00910001",
+          "enParentCode": "0091",
+          "childrenList": []
+        }
+      ]
+    }
+  ],
+  "ok": true
+}

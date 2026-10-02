@@ -1,0 +1,37 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "brandHomeVO": null,
+    "wmCatalogVOS": [],
+    "brandVOS": [],
+    "catalogVOS": null,
+    "productSearchResultVO": null,
+    "productTotalPage": null,
+    "isToDetail": null,
+    "isToBrand": null,
+    "isToCategory": false,
+    "tipProductDetailUrlVO": null,
+    "brandUrlMap": null,
+    "searchEngineProcess": {
+      "preprocessedContent": "4.7uF 0805 25V",
+      "judgeProcess": "25v->普通参数\r\n4.7uf->核心参数\r\n4.7uf->普通参数\r\n0805->封装\r\n",
+      "isNormal": null,
+      "searchValidWord": "25v 0805 4.7uf",
+      "searchValidWordLight": null,
+      "hasModelSuggest": null,
+      "againJudgeHasResult": null,
+      "hasReplaceKeyword": null,
+      "judgeSuccessType": [
+        "PRODUCT_PARAM",
+        "STANDARD"
+      ],
+      "mappingCodeSet": null
+    },
+    "scene": "NO_RESULT",
+    "totalCount": 0,
+    "exactMatchResult": null,
+    "topResults": null
+  },
+  "ok": true
+}

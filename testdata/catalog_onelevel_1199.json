@@ -1,0 +1,31 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "catalogId": 1199,
+    "parentId": null,
+    "parentName": null,
+    "catalogName": null,
+    "catalogNameEn": "Chip Resistor - Surface Mount",
+    "childCatelogs": null,
+    "productNum": 0,
+    "relationProductImage": null,
+    "level": null,
+    "isLeaf": null,
+    "cataLogIntro": null,
+    "catalogIntroStr": null,
+    "categoryDesc": null,
+    "parentCatalogList": [
+      {
+        "catalogId": 30,
+        "catalogNameEn": "Passives"
+      },
+      {
+        "catalogId": 501,
+        "catalogNameEn": "Resistors"
+      }
+    ],
+    "isCableCategory": false
+  },
+  "ok": true
+}

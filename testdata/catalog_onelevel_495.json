@@ -1,0 +1,64 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "catalogId": 495,
+    "parentId": null,
+    "parentName": null,
+    "catalogName": null,
+    "catalogNameEn": "Capacitors",
+    "childCatelogs": [
+      {
+        "catalogId": 1139,
+        "parentId": null,
+        "parentName": null,
+        "catalogName": null,
+        "catalogNameEn": "Aluminum - Polymer Capacitors",
+        "childCatelogs": null,
+        "productNum": 11280,
+        "relationProductImage": "https://assets.lcsc.com/images/lcsc/900x900/20251114_Honor-Elec-HS0J397M0509PC_C99832_front.jpg",
+        "level": null,
+        "isLeaf": null
+      },
+      {
+        "catalogId": 1140,
+        "parentId": null,
+        "parentName": null,
+        "catalogName": null,
+        "catalogNameEn": "Aluminum Electrolytic Capacitors",
+        "childCatelogs": null,
+        "productNum": 101445,
+        "relationProductImage": "https://assets.lcsc.com/images/lcsc/900x900/20221231_ROQANG-RVE1C101M0605_C99838_front.jpg",
+        "level": null,
+        "isLeaf": null
+      },
+      {
+        "catalogId": 1141,
+        "parentId": null,
+        "parentName": null,
+        "catalogName": null,
+        "catalogNameEn": "Capacitor Networks, Arrays",
+        "childCatelogs": null,
+        "productNum": 556,
+        "relationProductImage": "https://assets.lcsc.com/images/lcsc/900x900/20230201_Kyocera-AVX-W3A45C103K4T2A_C779991_front.jpg",
+        "level": null,
+        "isLeaf": null
+      }
+    ],
+    "productNum": 0,
+    "relationProductImage": null,
+    "level": null,
+    "isLeaf": null,
+    "cataLogIntro": null,
+    "catalogIntroStr": null,
+    "categoryDesc": null,
+    "parentCatalogList": [
+      {
+        "catalogId": 30,
+        "catalogNameEn": "Passives"
+      }
+    ],
+    "isCableCategory": false
+  },
+  "ok": true
+}

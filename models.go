@@ -286,8 +286,33 @@ type Product struct {
 	BrandID int `json:"brandId"`
 
 	// WmCatalogID is the id of the leaf category in the LCSC category
-	// tree.
+	// tree (see [CatalogService]).
 	WmCatalogID int `json:"wmCatalogId"`
+
+	// WmCatalogNameEn is the English name of the WmCatalogID category.
+	WmCatalogNameEn string `json:"wmCatalogNameEn"`
+
+	// ParentCatalogList holds the parent categories of WmCatalogID, from
+	// the root category down. Only detail responses send it. Use
+	// [Product.CatalogPath].
+	ParentCatalogList []CategoryRef `json:"parentCatalogList"`
+
+	// FirstWmCatalogID to SixthWmCatalogID and their names are the
+	// category path of a list row, from the root category down. The levels
+	// below the leaf category are 0 and empty. Only list rows send them.
+	// Use [Product.CatalogPath].
+	FirstWmCatalogID      int    `json:"firstWmCatalogId"`
+	FirstWmCatalogNameEn  string `json:"firstWmCatalogNameEn"`
+	SecondWmCatalogID     int    `json:"secondWmCatalogId"`
+	SecondWmCatalogNameEn string `json:"secondWmCatalogNameEn"`
+	ThirdWmCatalogID      int    `json:"thirdWmCatalogId"`
+	ThirdWmCatalogNameEn  string `json:"thirdWmCatalogNameEn"`
+	FourthWmCatalogID     int    `json:"fourthWmCatalogId"`
+	FourthWmCatalogNameEn string `json:"fourthWmCatalogNameEn"`
+	FifthWmCatalogID      int    `json:"fifthWmCatalogId"`
+	FifthWmCatalogNameEn  string `json:"fifthWmCatalogNameEn"`
+	SixthWmCatalogID      int    `json:"sixthWmCatalogId"`
+	SixthWmCatalogNameEn  string `json:"sixthWmCatalogNameEn"`
 
 	// ProductImageURLBig is the 900x900 version of ProductImageURL. Detail
 	// responses do not send it. For a detail response, use ProductImages.
@@ -340,6 +365,11 @@ type Product struct {
 	// "EAR99".
 	Eccn string `json:"eccn"`
 
+	// MoistureSensitivityLevel is the moisture sensitivity level as LCSC
+	// sends it. The text is in Chinese, for example "1级(无限)" (level 1,
+	// unlimited floor life). Only list rows send it.
+	MoistureSensitivityLevel string `json:"moistureSensitivityLevel"`
+
 	// FlashSale is the time-limited third-party offer for the product. It
 	// is nil when no offer exists.
 	FlashSale *FlashSale `json:"flashSaleProductPO"`
@@ -360,6 +390,54 @@ type Product struct {
 // GetProductURL returns the LCSC product page URL.
 func (p *Product) GetProductURL() string {
 	return fmt.Sprintf("https://www.lcsc.com/product-detail/%s.html", p.ProductCode)
+}
+
+// CatalogPath returns the category path of the product, from the root
+// category down to the leaf category (WmCatalogID). It uses the first
+// source that it finds:
+//
+//  1. ParentCatalogList and WmCatalogID. Detail responses send them.
+//  2. FirstWmCatalogID to SixthWmCatalogID. List rows send them.
+//  3. WmCatalogID alone.
+//
+// It returns nil when the product has no category id.
+func (p *Product) CatalogPath() []CategoryRef {
+	if p == nil {
+		return nil
+	}
+
+	leaf := CategoryRef{ID: p.WmCatalogID, Name: strings.TrimSpace(p.WmCatalogNameEn)}
+	if len(p.ParentCatalogList) > 0 {
+		path := append([]CategoryRef(nil), p.ParentCatalogList...)
+		if leaf.ID > 0 && path[len(path)-1].ID != leaf.ID {
+			path = append(path, leaf)
+		}
+		return path
+	}
+
+	levels := []CategoryRef{
+		{ID: p.FirstWmCatalogID, Name: p.FirstWmCatalogNameEn},
+		{ID: p.SecondWmCatalogID, Name: p.SecondWmCatalogNameEn},
+		{ID: p.ThirdWmCatalogID, Name: p.ThirdWmCatalogNameEn},
+		{ID: p.FourthWmCatalogID, Name: p.FourthWmCatalogNameEn},
+		{ID: p.FifthWmCatalogID, Name: p.FifthWmCatalogNameEn},
+		{ID: p.SixthWmCatalogID, Name: p.SixthWmCatalogNameEn},
+	}
+	var path []CategoryRef
+	for _, level := range levels {
+		if level.ID <= 0 {
+			break
+		}
+		path = append(path, CategoryRef{ID: level.ID, Name: strings.TrimSpace(level.Name)})
+	}
+	if len(path) > 0 {
+		return path
+	}
+
+	if leaf.ID > 0 {
+		return []CategoryRef{leaf}
+	}
+	return nil
 }
 
 // Currency returns the code of the response currency. [PriceBreak.Price]

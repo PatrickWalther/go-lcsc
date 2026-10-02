@@ -1,0 +1,77 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "brandHomeVO": null,
+    "wmCatalogVOS": null,
+    "brandVOS": null,
+    "catalogVOS": null,
+    "productSearchResultVO": null,
+    "productTotalPage": null,
+    "isToDetail": null,
+    "isToBrand": null,
+    "isToCategory": false,
+    "tipProductDetailUrlVO": null,
+    "brandUrlMap": null,
+    "searchEngineProcess": {
+      "preprocessedContent": "10k 0603",
+      "judgeProcess": "10kω->核心参数\r\n10kω->普通参数\r\n0603->封装\r\n",
+      "isNormal": null,
+      "searchValidWord": "10kω 0603",
+      "searchValidWordLight": null,
+      "hasModelSuggest": null,
+      "againJudgeHasResult": null,
+      "hasReplaceKeyword": null,
+      "judgeSuccessType": [
+        "PRODUCT_PARAM",
+        "STANDARD"
+      ],
+      "mappingCodeSet": null
+    },
+    "scene": "FULL_MATCH",
+    "totalCount": 979,
+    "exactMatchResult": null,
+    "topResults": [
+      {
+        "catalogId": 1199,
+        "catalogNameEn": "Chip Resistor - Surface Mount",
+        "parentId": 501,
+        "parentName": "Resistors",
+        "level": 3,
+        "productNum": 697,
+        "hasExactMatch": null,
+        "childCatalogs": [],
+        "rootCatalogId": 30,
+        "rootCatalogName": "Passives",
+        "relationProductImage": "https://assets.lcsc.com/images/lcsc/900x900/20221231_FH--Guangdong-Fenghua-Advanced-Tech-RS-03K6201FT_C99892_front.jpg"
+      },
+      {
+        "catalogId": 1272,
+        "catalogNameEn": "NTC Thermistors",
+        "parentId": 627,
+        "parentName": "Temperature Sensors",
+        "level": 3,
+        "productNum": 195,
+        "hasExactMatch": null,
+        "childCatalogs": [],
+        "rootCatalogId": 37,
+        "rootCatalogName": "Sensors, Transducers",
+        "relationProductImage": "https://assets.lcsc.com/images/lcsc/900x900/20221231_Murata-Electronics-NCP18XW222J03RB_C98101_front.jpg"
+      },
+      {
+        "catalogId": 1200,
+        "catalogNameEn": "Resistor Networks, Arrays",
+        "parentId": 501,
+        "parentName": "Resistors",
+        "level": 3,
+        "productNum": 87,
+        "hasExactMatch": null,
+        "childCatalogs": [],
+        "rootCatalogId": 30,
+        "rootCatalogName": "Passives",
+        "relationProductImage": "https://assets.lcsc.com/images/lcsc/900x900/20230130_RALEC-RTA02-2D000JTH_C962149_front.jpg"
+      }
+    ]
+  },
+  "ok": true
+}

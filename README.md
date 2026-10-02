@@ -5,7 +5,7 @@
 [![Tests](https://github.com/PatrickWalther/go-lcsc/actions/workflows/test.yml/badge.svg)](https://github.com/PatrickWalther/go-lcsc/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Unofficial Go client for [LCSC](https://www.lcsc.com) component search and product details.
+Unofficial Go client for [LCSC](https://www.lcsc.com) component search, parametric search, categories and product details.
 
 LCSC does not provide a documented public API for this data. This library uses undocumented endpoints that can change without notice.
 
@@ -67,7 +67,8 @@ func main() {
 
 ## Features
 
-- Service-based API: `client.Search`, `client.Product` and `client.Alternates`
+- Service-based API: `client.Search`, `client.Product`, `client.Alternates` and `client.Catalog`
+- Parametric search with category, package, manufacturer and parameter filters, and filter facets
 - Automatic retries with exponential backoff for transient failures
 - Token-bucket request rate limiting
 - Optional in-memory response caching with configurable TTL
@@ -92,7 +93,7 @@ if resp.DirectMatchCode != "" {
 }
 
 if resp.ParametricQuery {
-	fmt.Println("LCSC cannot list parts for a parameter query")
+	fmt.Println("parameter query: the products come from the route categories")
 }
 ```
 
@@ -113,7 +114,7 @@ The fallback endpoint can return popular parts that do not match the keyword. Th
 
 The comparison ignores case, white space, dashes and dots. When the keyword is the direct match code (for example `C2040`), the client keeps only the row with that code. When the client drops rows, `TotalCount` is the number of rows that it keeps.
 
-LCSC can classify a keyword as a parameter or package query, for example `100nF 0402`. Then the keyword endpoints cannot give a product list. For this case, the client does not send the fallback request. It returns an empty `Products` list, sets `ParametricQuery` to `true`, and returns no error.
+LCSC can classify a keyword as a parameter or package query, for example `100nF 0402`. Then the keyword endpoints cannot give a product list. For this case, the client sets `ParametricQuery` to `true` and does not send the fallback request. It gets the products from the categories of the v3 response, as `Parametric` does with the default options (see [Parametric Search](#parametric-search)). `Products` then holds the first 25 products from the first 3 leaf categories. When the v3 response has no category, `Products` is empty. The client returns no error for this case.
 
 For other classifications without a product list, for example a brand name (`BRAND`), the client also does not send the fallback request. It returns an empty `Products` list and no error. `ParametricQuery` is `false`.
 
@@ -121,9 +122,147 @@ For other classifications without a product list, for example a brand name (`BRA
 
 `TotalCount` and `ActualTotalCount` give the number of matching products:
 
-- For the fallback list, `TotalCount` is the `totalRow` value of `/product/query/list`. LCSC caps this value at 5000. `ActualTotalCount` is the `actualTotalRow` value, which LCSC does not cap.
+- For the fallback list and for a parameter query, `TotalCount` is the `totalRow` value of `/product/query/list`. LCSC caps this value at 5000. `ActualTotalCount` is the `actualTotalRow` value, which LCSC does not cap.
 - For the v3 product list and the exact match list, both values are equal.
 - When the client drops fallback rows, both values are the number of rows that the client keeps.
+
+### Parametric Search
+
+`client.Search.Parametric` returns products for a parameter or package query, for example `100nF 0402` or `10k 0603`. LCSC cannot answer such a query with a keyword list.
+
+```go
+resp, err := client.Search.Parametric(ctx, "100nF 0402", &lcsc.ParametricOptions{
+	MaxCatalogs: 3,
+	InStock:     true,
+	Sort:        lcsc.SortStock,
+	Desc:        true,
+	PageSize:    50,
+})
+if err != nil {
+	// handle error
+}
+
+fmt.Println(resp.Route.Scene, resp.CatalogIDs, resp.ActualTotal)
+for _, p := range resp.Products {
+	fmt.Println(p.ProductCode, p.ProductModel, p.StockNumber)
+}
+```
+
+`Parametric` first calls `Route`, which sends the query to `/search/v3/global`. Then it uses the first rule that applies:
+
+1. The route names one product (`RedirectCode`, scene `REDIRECT_PRODUCT_DETAIL`). `Parametric` returns the details of that product.
+2. LCSC classifies the query as a product model and sends exact matches. `Parametric` returns the exact matches.
+3. The route has top categories (scene `FULL_MATCH`). `Parametric` calls `List` with the query as `GlobalKeyword` and the first leaf categories of the route. `MaxCatalogs` sets the number of categories. The default is 3.
+4. The route has a product page (scene `PARTIAL_MATCH`). `Parametric` returns that page. For another page or another page size, it sends the v3 request again with the page fields.
+5. Otherwise, for example for scene `NO_RESULT`, `Parametric` returns an empty response and no error.
+
+`InStock`, `Sort` and `Desc` apply only to rule 3. `Page` and `PageSize` follow the rules of `List`. `ListResponse.Route` holds the route.
+
+`Route` fields:
+
+| Field | Description |
+|---|---|
+| `Scene` | `SceneFullMatch`, `ScenePartialMatch`, `SceneRedirectProductDetail` or `SceneNoResult`. LCSC can send other values. |
+| `TotalCount` | Number of matching products that LCSC reports for the scene. |
+| `TopResults` | Categories with matching products, best category first. Each category has an id and a product count. |
+| `ExactMatches` | Products whose model is equal to the keyword. Each product has a `ProductID`. |
+| `RedirectCode` | Product code that the keyword names. |
+| `QueryTypes`, `ProductModel` | Classification of the keyword. `ProductModel` is `true` for `PRODUCT_MODEL`. |
+| `Products`, `Page`, `PageSize` | Product page for `PARTIAL_MATCH`. |
+
+`Route.LeafCatalogIDs(n)` returns up to `n` leaf category ids from `TopResults`. `Route.IsParametric()` reports a parameter or package classification.
+
+`client.Search.Similar(ctx, code, opts)` finds products like a given product. It gets the product details. Then it calls `List` with the category, the package and the key parameters (`IsMain`) of the product. `SimilarOptions.Relax` removes parameters from the filter, and `SimilarOptions.AnyPackage` removes the package. A filter with all key parameters can be too narrow, so relax one parameter at a time. The result can include the product itself. `Product.SimilarFilter(relax...)` gives the same filter for a product that you already have.
+
+### List and Facets
+
+`client.Search.List` sends a filter to `/product/query/list`. The LCSC category pages use this endpoint.
+
+```go
+resp, err := client.Search.List(ctx, &lcsc.ListRequest{
+	Filter: lcsc.Filter{
+		GlobalKeyword: "10k 0603",
+		CatalogIDs:    []int{1199},
+		Params:        map[string][]string{"Tolerance": {"±1%"}},
+		InStock:       true,
+	},
+	Sort:     lcsc.SortPrice,
+	Page:     1,
+	PageSize: 100,
+})
+if err != nil {
+	// handle error
+}
+
+fmt.Println(resp.TotalCount, resp.ActualTotal)
+```
+
+Filter fields:
+
+| Field | JSON | Description |
+|---|---|---|
+| `GlobalKeyword` | `globalKeyword` | Parameter or package query. It needs `CatalogIDs`. The client then sends `scene` `FULL_MATCH` for an exact match. Without the scene, LCSC uses a loose match. |
+| `Keyword` | `keyword` | Text search. Without `CatalogIDs`, LCSC matches it as a substring of the model. With `GlobalKeyword`, it searches inside the results. |
+| `CatalogIDs` | `catalogIdList` | Leaf category ids. LCSC finds no products for a parent id and sends no error. Use `Catalog.Leaves` to get the leaf ids. |
+| `BrandIDs` | `brandIdList` | Manufacturer ids. |
+| `Packages` | `encapValueList` | Package names, for example `0603`. |
+| `Params` | `paramNameValueMap` | Parameter name to accepted values. A product must match one value of each name. Use the exact names and values of the facets. LCSC finds no products for an unknown name and sends no error. |
+| `InStock` | `isStock` | Only products with LCSC stock. |
+| `RoHS` | `isRohsCert` | Only products with a RoHS certificate. |
+
+Request rules:
+
+- `Page` starts at 1. `PageSize` is from 1 to 100. The client sends 25 when `PageSize` is 0.
+- The client returns `ErrInvalidRequest` and does not send the request in these cases:
+  - `PageSize` is above 100.
+  - `Page × PageSize` is above 5000. LCSC returns at most 5000 rows.
+  - `GlobalKeyword` is set and `CatalogIDs` is empty.
+  - A category id or a brand id is not positive.
+- LCSC answers the first three cases with code 405.
+- `Sort` is `SortStock` or `SortPrice`. `Desc` sets the descending order. The price sort uses the price of the largest quantity break. The stock sort is approximate.
+
+`TotalCount` is the `totalRow` value, which LCSC caps at 5000. `ActualTotal` is the `actualTotalRow` value, which is the real count.
+
+`client.Search.Facets` sends the same filter to `/product/query/param/group`. It returns the values that exist for the filter: `TotalCount`, `Packages`, `Manufacturers` (with ids), `Packagings`, and `Params` in the order of the LCSC site. For a dimension that the filter uses, LCSC sends only the selected values.
+
+```go
+facets, err := client.Search.Facets(ctx, &lcsc.Filter{CatalogIDs: []int{1142}, Packages: []string{"0402"}})
+if err != nil {
+	// handle error
+}
+
+capacitance := facets.Param("Capacitance")
+for _, v := range capacitance.Values {
+	n, _ := v.Number() // value in the standard unit (pF for capacitance)
+	fmt.Println(v.Name, n)
+}
+
+// LCSC gives one value more than one name, for example 100nF and 100000pF.
+params := facets.ExpandParams(map[string][]string{"Capacitance": {"100nF"}})
+fmt.Println(params["Capacitance"]) // [100nF 100000pF ...]
+```
+
+`ParamFacet.Equivalents(name)` returns the names with the same quantity. Two names are equivalent only when both are a number with a unit of the facet, and when the values are not ranges. So `15mΩ@4.5V` and `15mΩ@10V` are not equivalent, although LCSC gives both the value 0.015. `FacetValue.Range()` returns the start and the end of a range value.
+
+The client caches `List`, `Facets` and `Route` for `CacheConfig.SearchTTL`.
+
+### Catalog Service
+
+`client.Catalog` reads the LCSC category tree. A category id is the same id as `Product.WmCatalogID`.
+
+```go
+tree, err := client.Catalog.Tree(ctx)               // root categories with their children
+path, err := client.Catalog.Path(ctx, 1199)         // Passives > Resistors > Chip Resistor - Surface Mount
+leaves, err := client.Catalog.Leaves(ctx, 495)      // leaf ids under Capacitors
+counts, err := client.Catalog.ChildCounts(ctx, 495) // child categories with product counts
+```
+
+- `Tree` uses `/product/category/tree`. It removes the root category "Maintenance, Repair & Operations" (id 1729), because that subtree repeats categories of other roots under different ids. The client caches the tree for 24 hours. When caching is disabled, each call sends a request, and the response is about 400 KB.
+- `Path` and `Leaves` use `Tree`. They return `ErrNotFound` for an id that is not in the tree. Some ids occur two times in the tree. `Path` uses the first one.
+- `Leaves` returns the id itself for a leaf category. Use the result in `Filter.CatalogIDs`.
+- `ChildCounts` uses `/product/catalog/menu/onelevel`. It returns an empty list for a leaf category and `ErrNotFound` for an unknown id.
+
+`Category` has the fields `ID`, `Name`, `ParentID`, `Level` (1 for a root category) and `Children`, and the methods `IsLeaf()` and `LeafIDs()`.
 
 ### Product Service
 
@@ -182,6 +321,9 @@ Product fields:
 | `CurrencyType` | `currencyType` | Code of the response currency. Only `Details` fills it. |
 | `BrandID` | `brandId` | LCSC id of the manufacturer. |
 | `WmCatalogID` | `wmCatalogId` | Id of the leaf category in the LCSC category tree. |
+| `WmCatalogNameEn` | `wmCatalogNameEn` | English name of the `WmCatalogID` category. |
+| `ParentCatalogList` | `parentCatalogList` | Parent categories, from the root category down. Only detail responses send it. |
+| `FirstWmCatalogID` to `SixthWmCatalogID`, with the `...NameEn` fields | `firstWmCatalogId` to `sixthWmCatalogId` | Category path of a list row, from the root category down. Only list rows send it. |
 | `ProductImageURLBig` | `productImageUrlBig` | 900x900 image. Detail responses do not send it. |
 | `IsNotOverstock` | `isNotOverstock` | `true` when LCSC refuses an order quantity above `StockNumber`. |
 | `IsForeignOnsale` | `isForeignOnsale` | `false` when LCSC does not sell the product to overseas customers. `nil` when the response does not send it. |
@@ -191,6 +333,7 @@ Product fields:
 | `ProductArrange` | `productArrange` | Packaging, for example `Tape & Reel (TR)`. |
 | `StockSz`, `StockJs`, `WmStockHk` | `stockSz`, `stockJs`, `wmStockHk` | Stock per warehouse. The sum is `StockNumber`. Detail responses send only `stockSz`. |
 | `Eccn` | `eccn` | Export control classification number. |
+| `MoistureSensitivityLevel` | `moistureSensitivityLevel` | Moisture sensitivity level as Chinese text, for example `1级(无限)` (level 1, unlimited floor life). Only list rows send it. |
 | `FlashSale` | `flashSaleProductPO` | Time-limited third-party offer, or `nil`. |
 | `AlternatePartList` | `alternatePartList` | Alternates that LCSC selects (up to five). Only `Details` fills this list. Use `client.Alternates.List` for the full cross-reference list. |
 | `MatchType` | `matchType` | Match code of an alternate, for example `"1"`, `"4"`, `"5"` or `"6"`. LCSC does not document the codes. The type is `FlexString`, which accepts a JSON string, number or null. Use `Match()` for a typed `MatchType`. |
@@ -203,6 +346,8 @@ Product methods:
 | `Lifecycle()` | `LifecycleActive`, `LifecycleNotRecommended`, `LifecycleDiscontinued` or `LifecycleUnknown`. |
 | `AllowsBackorder()` | `false` when `IsNotOverstock` is `true` or `IsForeignOnsale` is `false`. |
 | `Match()` | `MatchType` as a typed `MatchType` value, with `Label()` and `IsDropIn()`. |
+| `CatalogPath()` | Category path from the root category to the leaf category. It uses `ParentCatalogList` (detail) or the list-row path fields. |
+| `SimilarFilter(relax...)` | Filter for products like this product. See [Parametric Search](#parametric-search). |
 
 `Lifecycle` gives `LifecycleDiscontinued` for `stop_product`. It gives `LifecycleNotRecommended` for other cycles that are not `normal`. It gives `LifecycleActive` for `normal`, and also for an empty cycle when the record has other lifecycle fields. It gives `LifecycleUnknown` when the record has no lifecycle data.
 
@@ -402,6 +547,10 @@ All API changes are additive. Existing code compiles without changes.
 - New `client.Alternates` service (`AlternateService`) with `List()`, and the types `AlternatesRequest` and `AlternatesResponse`.
 - New `MatchType` type with the methods `Label()` and `IsDropIn()`, the constants `MatchTypeAltPackaging`, `MatchTypeDirect` and `MatchTypeUpgrade`, and the new method `Product.Match()`. The field `Product.MatchType` keeps the type `FlexString`.
 - New `DiffParameters()` function with the types `ParameterDiff` and `ParameterDiffKind`.
+- New `client.Catalog` service (`CatalogService`) with `Tree()`, `Path()`, `Leaves()` and `ChildCounts()`, and the types `Category`, `CategoryRef` and `CategoryCount`.
+- New `SearchService` methods: `List()`, `Facets()`, `Route()`, `Parametric()` and `Similar()`. New types: `Filter`, `ListRequest`, `ListResponse`, `SortField`, `Facets`, `FacetBrand`, `ParamFacet`, `FacetValue`, `Route`, `RouteScene`, `RouteCategory`, `ParametricOptions` and `SimilarOptions`.
+- New `Product` fields: `WmCatalogNameEn`, `ParentCatalogList`, `FirstWmCatalogID` to `SixthWmCatalogID` with their names, and `MoistureSensitivityLevel`. New methods: `Product.CatalogPath()` and `Product.SimilarFilter()`.
+- `Search.Keyword` returns products for a parameter query. Before, it returned an empty list. It now sends a second request to `/product/query/list` with the categories of the v3 response. `ParametricQuery` stays `true`.
 
 ## Changes In v1.1.0
 

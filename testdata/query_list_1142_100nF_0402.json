@@ -1,0 +1,176 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "currPage": 1,
+    "pageRow": 100,
+    "totalPage": 3,
+    "totalRow": 211,
+    "dataList": [
+      {
+        "productId": 61526,
+        "productCode": "C60474",
+        "productModel": "CC0402KRX7R7BB104",
+        "brandId": 396,
+        "brandNameEn": "YAGEO",
+        "productIntroEn": "100nF ±10% 16V Ceramic Capacitor X7R 0402",
+        "encapStandard": "0402",
+        "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+        "parentCatalogName": "Capacitors",
+        "wmCatalogId": 1142,
+        "wmCatalogNameEn": "Ceramic Capacitors",
+        "firstWmCatalogId": 30,
+        "firstWmCatalogNameEn": "Passives",
+        "secondWmCatalogId": 495,
+        "secondWmCatalogNameEn": "Capacitors",
+        "thirdWmCatalogId": 1142,
+        "thirdWmCatalogNameEn": "Ceramic Capacitors",
+        "fourthWmCatalogId": null,
+        "fourthWmCatalogNameEn": null,
+        "fifthWmCatalogId": null,
+        "fifthWmCatalogNameEn": null,
+        "sixthWmCatalogId": null,
+        "sixthWmCatalogNameEn": null,
+        "stockNumber": 14752100,
+        "stockSz": 14752100,
+        "stockJs": 0,
+        "wmStockHk": 0,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "minPacketNumber": 10000,
+        "split": 100,
+        "productCycle": "normal",
+        "isNotOverstock": false,
+        "isForeignOnsale": true,
+        "isPreSale": false,
+        "isReel": true,
+        "reelPrice": 3.0,
+        "productArrange": "Tape & Reel (TR)",
+        "eccn": "EAR99",
+        "moistureSensitivityLevel": "1级(无限)",
+        "hasThirdPartyStock": false,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "flashSaleProductPO": null,
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221230_YAGEO-CC0402KRX7R7BB104_C60474_front.jpg",
+        "productImageUrlBig": "https://assets.lcsc.com/images/lcsc/900x900/20221230_YAGEO-CC0402KRX7R7BB104_C60474_front.jpg",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/23ccee80ee542e7cf156a772bb589942.pdf?productCode=C60474",
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0048",
+            "usdPrice": 0.0048,
+            "currencyPrice": 0.0048,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "productPrice": "0.0036",
+            "usdPrice": 0.0036,
+            "currencyPrice": 0.0036,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": [
+          {
+            "paramCode": "param_10951_n",
+            "paramNameEn": "Capacitance",
+            "paramValueEn": "100nF",
+            "paramValueEnForSearch": 100000.0,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_10927",
+            "paramNameEn": "Temperature Coefficient",
+            "paramValueEn": "X7R",
+            "paramValueEnForSearch": -1.0,
+            "isMain": true
+          }
+        ]
+      },
+      {
+        "productId": 78147,
+        "productCode": "C77020",
+        "productModel": "GRM155R71H104KE14D",
+        "brandId": 79,
+        "brandNameEn": "muRata",
+        "productIntroEn": "100nF ±10% 50V Ceramic Capacitor X7R 0402",
+        "encapStandard": "0402",
+        "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+        "parentCatalogName": "Capacitors",
+        "wmCatalogId": 1142,
+        "wmCatalogNameEn": "Ceramic Capacitors",
+        "firstWmCatalogId": 30,
+        "firstWmCatalogNameEn": "Passives",
+        "secondWmCatalogId": 495,
+        "secondWmCatalogNameEn": "Capacitors",
+        "thirdWmCatalogId": 1142,
+        "thirdWmCatalogNameEn": "Ceramic Capacitors",
+        "fourthWmCatalogId": null,
+        "fourthWmCatalogNameEn": null,
+        "fifthWmCatalogId": null,
+        "fifthWmCatalogNameEn": null,
+        "sixthWmCatalogId": null,
+        "sixthWmCatalogNameEn": null,
+        "stockNumber": 1104000,
+        "stockSz": 1104000,
+        "stockJs": 0,
+        "wmStockHk": 0,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "minPacketNumber": 10000,
+        "split": 100,
+        "productCycle": "normal",
+        "isNotOverstock": false,
+        "isForeignOnsale": true,
+        "isPreSale": false,
+        "isReel": true,
+        "reelPrice": 3.0,
+        "productArrange": "Tape & Reel (TR)",
+        "eccn": "EAR99",
+        "moistureSensitivityLevel": "1级(无限)",
+        "hasThirdPartyStock": false,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "flashSaleProductPO": null,
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221231_Murata-Electronics-GRM155R71H104KE14D_C77020_front.jpg",
+        "productImageUrlBig": "https://assets.lcsc.com/images/lcsc/900x900/20221231_Murata-Electronics-GRM155R71H104KE14D_C77020_front.jpg",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/64ac52ef9cc4e1905eba7e2ece85e662.pdf?productCode=C77020",
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0070",
+            "usdPrice": 0.007,
+            "currencyPrice": 0.007,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "productPrice": "0.0054",
+            "usdPrice": 0.0054,
+            "currencyPrice": 0.0054,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": [
+          {
+            "paramCode": "param_10951_n",
+            "paramNameEn": "Capacitance",
+            "paramValueEn": "100nF",
+            "paramValueEnForSearch": 100000.0,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_10927",
+            "paramNameEn": "Temperature Coefficient",
+            "paramValueEn": "X7R",
+            "paramValueEnForSearch": -1.0,
+            "isMain": true
+          }
+        ]
+      }
+    ],
+    "actualTotalRow": 211
+  },
+  "ok": true
+}

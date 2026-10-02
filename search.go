@@ -27,17 +27,18 @@ type SearchResponse struct {
 
 	// TotalCount is the number of matching products that LCSC reports for
 	// the product list in Products. For the exact match list, TotalCount is
-	// the length of that list. For the fallback list, TotalCount is the
-	// totalRow value of /product/query/list, which LCSC caps at 5000. When
-	// the client drops unrelated rows from the fallback list, TotalCount is
-	// the number of rows it keeps.
+	// the length of that list. For the fallback list and for a parametric
+	// query, TotalCount is the totalRow value of /product/query/list, which
+	// LCSC caps at 5000. When the client drops unrelated rows from the
+	// fallback list, TotalCount is the number of rows it keeps.
 	TotalCount int
 
 	// ActualTotalCount is the real number of matching products. For the
-	// fallback list, it is the actualTotalRow value of /product/query/list,
-	// which LCSC does not cap. For all other cases, it is equal to
-	// TotalCount: the v3 product list does not cap its count, and when the
-	// client drops unrelated rows, it counts the rows it keeps.
+	// fallback list and for a parametric query, it is the actualTotalRow
+	// value of /product/query/list, which LCSC does not cap. For all other
+	// cases, it is equal to TotalCount: the v3 product list does not cap
+	// its count, and when the client drops unrelated rows, it counts the
+	// rows it keeps.
 	ActualTotalCount int
 
 	// DirectMatchCode is the LCSC product code that LCSC links directly to
@@ -51,14 +52,11 @@ type SearchResponse struct {
 
 	// ParametricQuery is true when LCSC classifies the keyword as a
 	// parameter or package query (for example "100nF 0402") and returns no
-	// product list. Products is then empty. The keyword endpoints cannot
-	// answer this type of query, so the client does not send the fallback
-	// request.
+	// product list. The client then gets Products from the categories of
+	// the route, as [SearchService.Parametric] does with the default
+	// options: the first page of 25 products in the first 3 leaf
+	// categories. Products is empty when LCSC gives no category.
 	ParametricQuery bool
-}
-
-type searchRequestBody struct {
-	Keyword string `json:"keyword"`
 }
 
 type productListRequestBody struct {
@@ -67,20 +65,15 @@ type productListRequestBody struct {
 	PageSize    int    `json:"pageSize"`
 }
 
-type productListWrapper struct {
-	// TotalRow is the number of matching products. LCSC caps it at 5000.
-	TotalRow int `json:"totalRow"`
-
-	// ActualTotalRow is the real number of matching products.
-	ActualTotalRow int `json:"actualTotalRow"`
-
-	DataList []Product `json:"dataList"`
-}
-
 type searchResponseWrapper struct {
-	ProductSearchResultVO struct {
+	Scene                 string          `json:"scene"`
+	TotalCount            int             `json:"totalCount"`
+	TopResults            []RouteCategory `json:"topResults"`
+	ProductSearchResultVO *struct {
 		ProductList []Product `json:"productList"`
 		TotalCount  int       `json:"totalCount"`
+		CurrentPage int       `json:"currentPage"`
+		PageSize    int       `json:"pageSize"`
 	} `json:"productSearchResultVO"`
 	ExactMatchResult    []Product `json:"exactMatchResult"`
 	SearchEngineProcess *struct {
@@ -110,10 +103,12 @@ const (
 //     [SearchResponse.TotalCount].
 //
 // When LCSC classifies the keyword as a parameter or package query, the
-// client returns an empty result and sets [SearchResponse.ParametricQuery].
-// For other classifications without a product list, for example a brand,
-// the client returns an empty result. It does not return an error for these
-// cases.
+// client sets [SearchResponse.ParametricQuery]. It then sends the keyword
+// as a global keyword to /product/query/list, with the leaf categories of
+// the v3 response (see [SearchService.Parametric]). When the v3 response
+// has no category, the result is empty. For other classifications without
+// a product list, for example a brand, the client returns an empty result.
+// It does not return an error for these cases.
 func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("%w: request is nil", ErrInvalidRequest)
@@ -136,34 +131,43 @@ func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*Searc
 	}
 
 	var wrapper searchResponseWrapper
-	if err := client.do(ctx, http.MethodPost, "/search/v3/global", nil, searchRequestBody{Keyword: keyword}, &wrapper); err != nil {
+	if err := client.do(ctx, http.MethodPost, "/search/v3/global", nil, routeRequestBody{Keyword: keyword}, &wrapper); err != nil {
 		return nil, err
 	}
 
-	resp := &SearchResponse{}
-	if wrapper.TipProductDetailURLVO != nil && wrapper.TipProductDetailURLVO.ProductCode != "" {
-		resp.DirectMatchCode = wrapper.TipProductDetailURLVO.ProductCode
-	}
-	if wrapper.SearchEngineProcess != nil && len(wrapper.SearchEngineProcess.JudgeSuccessType) > 0 {
-		resp.QueryTypes = wrapper.SearchEngineProcess.JudgeSuccessType
+	route := newRoute(keyword, &wrapper)
+	resp := &SearchResponse{
+		DirectMatchCode: route.RedirectCode,
+		QueryTypes:      route.QueryTypes,
 	}
 
 	// search/v3/global mostly routes the query (direct match, categories).
 	// For model keywords it can give an exact match list. Other product
-	// lists moved to /product/query/list. That endpoint returns popular
-	// unrelated parts for parameter queries, so the client does not call it
-	// for those queries.
+	// lists moved to /product/query/list. With only a keyword, that
+	// endpoint returns popular unrelated parts for parameter queries. For
+	// those queries, the client uses the categories of the route instead.
 	switch {
-	case len(wrapper.ProductSearchResultVO.ProductList) > 0:
-		resp.Products = wrapper.ProductSearchResultVO.ProductList
-		resp.TotalCount = wrapper.ProductSearchResultVO.TotalCount
+	case len(route.Products) > 0:
+		resp.Products = route.Products
+		resp.TotalCount = route.TotalCount
 		resp.ActualTotalCount = resp.TotalCount
-	case len(wrapper.ExactMatchResult) > 0:
-		resp.Products = wrapper.ExactMatchResult
-		resp.TotalCount = len(wrapper.ExactMatchResult)
+	case len(route.ExactMatches) > 0:
+		resp.Products = route.ExactMatches
+		resp.TotalCount = len(route.ExactMatches)
 		resp.ActualTotalCount = resp.TotalCount
-	case isParametricQuery(resp.QueryTypes):
+	case route.IsParametric():
 		resp.ParametricQuery = true
+		opts, err := normalizeParametricOptions(nil)
+		if err != nil {
+			return nil, err
+		}
+		list, err := s.listFromRoute(ctx, route, opts)
+		if err != nil {
+			return nil, err
+		}
+		resp.Products = list.Products
+		resp.TotalCount = list.TotalCount
+		resp.ActualTotalCount = list.ActualTotal
 	case allowsFallback(resp.QueryTypes, resp.DirectMatchCode):
 		products, total, actualTotal, err := s.fallbackProducts(ctx, keyword, resp.DirectMatchCode)
 		if err != nil {
@@ -202,13 +206,7 @@ func (s *SearchService) fallbackProducts(ctx context.Context, keyword, directMat
 	if len(kept) != len(list.DataList) {
 		return kept, len(kept), len(kept), nil
 	}
-
-	actualTotal := list.ActualTotalRow
-	if actualTotal < list.TotalRow {
-		// Older responses do not send actualTotalRow.
-		actualTotal = list.TotalRow
-	}
-	return kept, list.TotalRow, actualTotal, nil
+	return kept, list.TotalRow, list.actualTotal(), nil
 }
 
 // hasQueryType reports whether types contains want. The comparison ignores

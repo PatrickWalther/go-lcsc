@@ -1,0 +1,278 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "currPage": 1,
+    "pageRow": 50,
+    "totalPage": 4,
+    "totalRow": 181,
+    "dataList": [
+      {
+        "productId": 99429,
+        "productCode": "C98220",
+        "productModel": "RC0603FR-0710KL",
+        "brandId": 396,
+        "brandNameEn": "YAGEO",
+        "productIntroEn": "100mW 10kΩ 75V Thick Film Resistor ±100ppm/℃ ±1% 0603 Chip Resistor - Surface Mount RoHS",
+        "encapStandard": "0603",
+        "catalogName": "Chip Resistor - Surface Mount",
+        "parentCatalogName": "Resistors",
+        "wmCatalogId": 1199,
+        "wmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "firstWmCatalogId": 30,
+        "firstWmCatalogNameEn": "Passives",
+        "secondWmCatalogId": 501,
+        "secondWmCatalogNameEn": "Resistors",
+        "thirdWmCatalogId": 1199,
+        "thirdWmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "fourthWmCatalogId": null,
+        "fourthWmCatalogNameEn": null,
+        "fifthWmCatalogId": null,
+        "fifthWmCatalogNameEn": null,
+        "sixthWmCatalogId": null,
+        "sixthWmCatalogNameEn": null,
+        "stockNumber": 8529000,
+        "stockSz": 8529000,
+        "stockJs": 0,
+        "wmStockHk": 0,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "minPacketNumber": 5000,
+        "split": 100,
+        "productCycle": "normal",
+        "isNotOverstock": false,
+        "isForeignOnsale": true,
+        "isPreSale": false,
+        "isReel": true,
+        "reelPrice": 3.0,
+        "productArrange": "Tape & Reel (TR)",
+        "eccn": "EAR99",
+        "moistureSensitivityLevel": "1级(无限)",
+        "hasThirdPartyStock": false,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "flashSaleProductPO": null,
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221231_YAGEO-RC0603FR-0710KL_C98220_front.jpg",
+        "productImageUrlBig": "https://assets.lcsc.com/images/lcsc/900x900/20221231_YAGEO-RC0603FR-0710KL_C98220_front.jpg",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/b426be3ce22c6de3e0c3a2248e49159e.pdf?productCode=C98220",
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0034",
+            "usdPrice": 0.0034,
+            "currencyPrice": 0.0034,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "productPrice": "0.0026",
+            "usdPrice": 0.0026,
+            "currencyPrice": 0.0026,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": [
+          {
+            "paramCode": "param_10837_n",
+            "paramNameEn": "Power(Watts)",
+            "paramValueEn": "100mW",
+            "paramValueEnForSearch": 0.1,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_11205_n",
+            "paramNameEn": "Resistance",
+            "paramValueEn": "10kΩ",
+            "paramValueEnForSearch": 10000.0,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_11204_n",
+            "paramNameEn": "Voltage Rating",
+            "paramValueEn": "75V",
+            "paramValueEnForSearch": 75.0,
+            "isMain": true
+          }
+        ]
+      },
+      {
+        "productId": 3180495,
+        "productCode": "C2906982",
+        "productModel": "FRC0603F1002TS",
+        "brandId": 13046,
+        "brandNameEn": "FOJAN",
+        "productIntroEn": "10kΩ ±1% 100mW 0603 Thick Film Resistor",
+        "encapStandard": "0603",
+        "catalogName": "Chip Resistor - Surface Mount",
+        "parentCatalogName": "Resistors",
+        "wmCatalogId": 1199,
+        "wmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "firstWmCatalogId": 30,
+        "firstWmCatalogNameEn": "Passives",
+        "secondWmCatalogId": 501,
+        "secondWmCatalogNameEn": "Resistors",
+        "thirdWmCatalogId": 1199,
+        "thirdWmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "fourthWmCatalogId": null,
+        "fourthWmCatalogNameEn": null,
+        "fifthWmCatalogId": null,
+        "fifthWmCatalogNameEn": null,
+        "sixthWmCatalogId": null,
+        "sixthWmCatalogNameEn": null,
+        "stockNumber": 3607100,
+        "stockSz": 3607100,
+        "stockJs": 0,
+        "wmStockHk": 0,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "minPacketNumber": 5000,
+        "split": 100,
+        "productCycle": "normal",
+        "isNotOverstock": false,
+        "isForeignOnsale": true,
+        "isPreSale": false,
+        "isReel": true,
+        "reelPrice": 3.0,
+        "productArrange": "Tape & Reel (TR)",
+        "eccn": null,
+        "moistureSensitivityLevel": null,
+        "hasThirdPartyStock": false,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "flashSaleProductPO": null,
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20250828_FOJAN-FRC0603F1002TS_C2906982_front.jpg",
+        "productImageUrlBig": "https://assets.lcsc.com/images/lcsc/900x900/20250828_FOJAN-FRC0603F1002TS_C2906982_front.jpg",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/106fb934f95f063b695dad1b31b1eab8.pdf?productCode=C2906982",
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0037",
+            "usdPrice": 0.0037,
+            "currencyPrice": 0.0037,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "productPrice": "0.0032",
+            "usdPrice": 0.0032,
+            "currencyPrice": 0.0032,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": [
+          {
+            "paramCode": "param_11205_n",
+            "paramNameEn": "Resistance",
+            "paramValueEn": "10kΩ",
+            "paramValueEnForSearch": 10000.0,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_10837_n",
+            "paramNameEn": "Power(Watts)",
+            "paramValueEn": "100mW",
+            "paramValueEnForSearch": 0.1,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_11204_n",
+            "paramNameEn": "Voltage Rating",
+            "paramValueEn": "75V",
+            "paramValueEnForSearch": 75.0,
+            "isMain": true
+          }
+        ]
+      },
+      {
+        "productId": 3266960,
+        "productCode": "C2930027",
+        "productModel": "FRC0603J103 TS",
+        "brandId": 13046,
+        "brandNameEn": "FOJAN",
+        "productIntroEn": "10kΩ ±5% 100mW 0603 Thick Film Resistor",
+        "encapStandard": "0603",
+        "catalogName": "Chip Resistor - Surface Mount",
+        "parentCatalogName": "Resistors",
+        "wmCatalogId": 1199,
+        "wmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "firstWmCatalogId": 30,
+        "firstWmCatalogNameEn": "Passives",
+        "secondWmCatalogId": 501,
+        "secondWmCatalogNameEn": "Resistors",
+        "thirdWmCatalogId": 1199,
+        "thirdWmCatalogNameEn": "Chip Resistor - Surface Mount",
+        "fourthWmCatalogId": null,
+        "fourthWmCatalogNameEn": null,
+        "fifthWmCatalogId": null,
+        "fifthWmCatalogNameEn": null,
+        "sixthWmCatalogId": null,
+        "sixthWmCatalogNameEn": null,
+        "stockNumber": 5441600,
+        "stockSz": 5441600,
+        "stockJs": 0,
+        "wmStockHk": 0,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "minPacketNumber": 5000,
+        "split": 100,
+        "productCycle": "normal",
+        "isNotOverstock": false,
+        "isForeignOnsale": true,
+        "isPreSale": false,
+        "isReel": true,
+        "reelPrice": 3.0,
+        "productArrange": "Tape & Reel (TR)",
+        "eccn": "",
+        "moistureSensitivityLevel": "",
+        "hasThirdPartyStock": false,
+        "hasAlternatePart": true,
+        "matchType": null,
+        "flashSaleProductPO": null,
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20230121_FOJAN-FRC0603J103-TS_C2930027_front.jpg",
+        "productImageUrlBig": "https://assets.lcsc.com/images/lcsc/900x900/20230121_FOJAN-FRC0603J103-TS_C2930027_front.jpg",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/106fb934f95f063b695dad1b31b1eab8.pdf?productCode=C2930027",
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0028",
+            "usdPrice": 0.0028,
+            "currencyPrice": 0.0028,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "productPrice": "0.0023",
+            "usdPrice": 0.0023,
+            "currencyPrice": 0.0023,
+            "currencySymbol": "$"
+          }
+        ],
+        "paramVOList": [
+          {
+            "paramCode": "param_11205_n",
+            "paramNameEn": "Resistance",
+            "paramValueEn": "10kΩ",
+            "paramValueEnForSearch": 10000.0,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_10837_n",
+            "paramNameEn": "Power(Watts)",
+            "paramValueEn": "100mW",
+            "paramValueEnForSearch": 0.1,
+            "isMain": true
+          },
+          {
+            "paramCode": "param_11204_n",
+            "paramNameEn": "Voltage Rating",
+            "paramValueEn": "75V",
+            "paramValueEnForSearch": 75.0,
+            "isMain": true
+          }
+        ]
+      }
+    ],
+    "actualTotalRow": 181
+  },
+  "ok": true
+}

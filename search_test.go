@@ -32,20 +32,45 @@ func productCodes(products []Product) []string {
 	return codes
 }
 
-func TestSearchKeywordParametricQuerySkipsFallback(t *testing.T) {
+func TestSearchKeywordParametricQueryUsesRouteCategories(t *testing.T) {
 	// Live response for "100nF 0402". LCSC classifies the keyword as a
-	// package and parameter query and returns no product list.
+	// package and parameter query, returns no product list and names the
+	// leaf category 1142 (Ceramic Capacitors).
 	v3 := mustReadFixture(t, "search_v3_parametric_100nF_0402.json")
-	unrelated := mustReadFixture(t, "query_list_100nF_0402.json")
+	list := mustReadFixture(t, "query_list_1142_100nF_0402.json")
 
 	var paths []string
 	client := newSearchTestClient(func(req *http.Request) (*http.Response, error) {
 		paths = append(paths, req.URL.Path)
-		if req.URL.Path != testSearchV3Path {
+		switch req.URL.Path {
+		case testSearchV3Path:
+			return jsonResponse(http.StatusOK, v3), nil
+		case testQueryListPath:
+			body := decodeJSONBody(t, req)
+			want := map[string]interface{}{
+				"keyword":           "",
+				"globalKeyword":     "100nF 0402",
+				"scene":             "FULL_MATCH",
+				"catalogIdList":     []interface{}{float64(1142)},
+				"brandIdList":       []interface{}{},
+				"encapValueList":    []interface{}{},
+				"isStock":           false,
+				"isOtherSuppliers":  false,
+				"isAsianBrand":      false,
+				"isDeals":           false,
+				"isRohsCert":        false,
+				"paramNameValueMap": map[string]interface{}{},
+				"currentPage":       float64(1),
+				"pageSize":          float64(25),
+			}
+			if !reflect.DeepEqual(body, want) {
+				t.Errorf("unexpected list body:\n got %v\nwant %v", body, want)
+			}
+			return jsonResponse(http.StatusOK, list), nil
+		default:
 			t.Errorf("unexpected request to %s", req.URL.Path)
-			return jsonResponse(http.StatusOK, unrelated), nil
+			return jsonResponse(http.StatusNotFound, ""), nil
 		}
-		return jsonResponse(http.StatusOK, v3), nil
 	})
 	defer func() { _ = client.Close() }()
 
@@ -54,31 +79,61 @@ func TestSearchKeywordParametricQuerySkipsFallback(t *testing.T) {
 		t.Fatalf("search failed: %v", err)
 	}
 
-	if len(paths) != 1 {
-		t.Fatalf("expected only the v3 request, got %v", paths)
+	if want := []string{testSearchV3Path, testQueryListPath}; !reflect.DeepEqual(paths, want) {
+		t.Fatalf("expected requests %v, got %v", want, paths)
 	}
 	if !resp.ParametricQuery {
 		t.Fatal("expected ParametricQuery to be true")
 	}
-	if len(resp.Products) != 0 {
-		t.Fatalf("expected no products, got %v", productCodes(resp.Products))
+	if got, want := productCodes(resp.Products), []string{"C60474", "C77020"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected products %v, got %v", want, got)
 	}
-	if resp.TotalCount != 0 {
-		t.Fatalf("expected total count 0, got %d", resp.TotalCount)
+	if resp.TotalCount != 211 || resp.ActualTotalCount != 211 {
+		t.Fatalf("expected counts 211 and 211, got %d and %d", resp.TotalCount, resp.ActualTotalCount)
 	}
 	if want := []string{"STANDARD", "PRODUCT_PARAM"}; !reflect.DeepEqual(resp.QueryTypes, want) {
 		t.Fatalf("expected query types %v, got %v", want, resp.QueryTypes)
 	}
 }
 
+func TestSearchKeywordParametricQueryWithoutCategory(t *testing.T) {
+	// Live v3 response with scene NO_RESULT for a parameter query.
+	v3 := mustReadFixture(t, "search_v3_no_result.json")
+
+	var paths []string
+	client := newSearchTestClient(func(req *http.Request) (*http.Response, error) {
+		paths = append(paths, req.URL.Path)
+		if req.URL.Path != testSearchV3Path {
+			t.Errorf("unexpected request to %s", req.URL.Path)
+		}
+		return jsonResponse(http.StatusOK, v3), nil
+	})
+	defer func() { _ = client.Close() }()
+
+	resp, err := client.Search.Keyword(context.Background(), &SearchRequest{Keyword: "4.7uF 0805 25V"})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+	if len(paths) != 1 {
+		t.Fatalf("expected only the v3 request, got %v", paths)
+	}
+	if !resp.ParametricQuery || len(resp.Products) != 0 || resp.TotalCount != 0 {
+		t.Fatalf("expected an empty parametric result, got %+v", resp)
+	}
+}
+
 func TestSearchKeywordParametricResultIsCached(t *testing.T) {
 	v3 := mustReadFixture(t, "search_v3_parametric_100nF_0402.json")
+	list := mustReadFixture(t, "query_list_1142_100nF_0402.json")
 
 	var calls int32
 	client := NewClient(
 		WithBaseURL("https://wmsc.lcsc.com/ftps/wm"),
 		WithHTTPClient(newTestHTTPClient(func(req *http.Request) (*http.Response, error) {
 			atomic.AddInt32(&calls, 1)
+			if req.URL.Path == testQueryListPath {
+				return jsonResponse(http.StatusOK, list), nil
+			}
 			return jsonResponse(http.StatusOK, v3), nil
 		})),
 		WithCache(NewMemoryCache(time.Minute)),
@@ -100,11 +155,14 @@ func TestSearchKeywordParametricResultIsCached(t *testing.T) {
 		t.Fatalf("second search failed: %v", err)
 	}
 
-	if got := atomic.LoadInt32(&calls); got != 1 {
-		t.Fatalf("expected one HTTP request with cache hit, got %d", got)
+	if got := atomic.LoadInt32(&calls); got != 2 {
+		t.Fatalf("expected the v3 and the list request only one time, got %d requests", got)
 	}
 	if !resp.ParametricQuery {
 		t.Fatal("expected cached response to keep ParametricQuery")
+	}
+	if len(resp.Products) != 2 {
+		t.Fatalf("expected cached response to keep 2 products, got %v", productCodes(resp.Products))
 	}
 	if want := []string{"STANDARD", "PRODUCT_PARAM"}; !reflect.DeepEqual(resp.QueryTypes, want) {
 		t.Fatalf("expected cached query types %v, got %v", want, resp.QueryTypes)

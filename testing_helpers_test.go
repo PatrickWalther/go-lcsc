@@ -1,6 +1,7 @@
 package lcsc
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -49,4 +50,15 @@ func mustReadFixture(t *testing.T, name string) string {
 		t.Fatalf("failed to read fixture %s: %v", name, err)
 	}
 	return string(data)
+}
+
+// decodeJSONBody decodes the JSON request body into a generic value, so
+// that a test can compare the complete body.
+func decodeJSONBody(t *testing.T, req *http.Request) map[string]interface{} {
+	t.Helper()
+	var body map[string]interface{}
+	if err := json.Unmarshal([]byte(mustReadBody(t, req)), &body); err != nil {
+		t.Fatalf("failed to decode request body: %v", err)
+	}
+	return body
 }
