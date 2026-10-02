@@ -346,7 +346,9 @@ type Product struct {
 
 	// MatchType is the code that LCSC gives to an alternate part, for
 	// example "1", "4", "5" or "6". LCSC does not document the codes. Only
-	// the entries of AlternatePartList have a value.
+	// the entries of AlternatePartList and of
+	// [AlternatesResponse.Alternates] have a value. Use [Product.Match]
+	// to get a [MatchType] with a label.
 	MatchType FlexString `json:"matchType"`
 
 	// AlternatePartList holds the alternate parts that LCSC selects for

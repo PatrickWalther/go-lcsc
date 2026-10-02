@@ -5,6 +5,9 @@ package lcsc
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -145,5 +148,82 @@ func TestIntegrationProductDetailsCurrencyEUR(t *testing.T) {
 		if pb.USDPrice != pb.ProductPrice {
 			t.Errorf("ladder %d: expected usdPrice %v to equal productPrice %v", pb.Ladder, pb.USDPrice, pb.ProductPrice)
 		}
+	}
+}
+
+// TestIntegrationAlternatesC1525 checks the cross-reference alternates
+// endpoint. C1525 had 99 alternates with the match types 4, 5 and 6.
+func TestIntegrationAlternatesC1525(t *testing.T) {
+	client := NewClient(WithoutCache())
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	resp, err := client.Alternates.List(ctx, &AlternatesRequest{ProductCode: "C1525"})
+	t.Logf("alternates C1525: %v, error %v", time.Since(start), err)
+	if err != nil {
+		t.Fatalf("alternates failed: %v", err)
+	}
+
+	if resp.Original.ProductCode != "C1525" || resp.Original.ProductID != 1877 {
+		t.Fatalf("unexpected original: %s (%d)", resp.Original.ProductCode, resp.Original.ProductID)
+	}
+	if len(resp.Alternates) == 0 {
+		t.Fatal("expected alternates for C1525")
+	}
+	if resp.TotalCount < len(resp.Alternates) || resp.InStockCount > resp.TotalCount {
+		t.Fatalf("unexpected counts: %d alternates, total %d, in stock %d", len(resp.Alternates), resp.TotalCount, resp.InStockCount)
+	}
+
+	labels := map[string]int{}
+	var direct *Product
+	for i := range resp.Alternates {
+		alt := &resp.Alternates[i]
+		if alt.ProductCode == "" || alt.ProductID == 0 || alt.Match() == "" {
+			t.Fatalf("alternate %d: expected a code, an id and a match type, got %q %d %q", i, alt.ProductCode, alt.ProductID, alt.MatchType)
+		}
+		labels[alt.Match().Label()]++
+		if direct == nil && alt.Match() == MatchTypeDirect {
+			direct = alt
+		}
+	}
+	t.Logf("%d alternates (total %d, in stock %d), labels %v", len(resp.Alternates), resp.TotalCount, resp.InStockCount, labels)
+	if labels["Direct"]+labels["Upgrade"] == 0 {
+		t.Fatalf("expected at least one alternate with match type 5 or 6, got labels %v", labels)
+	}
+	if direct != nil {
+		t.Logf("parameter differences for %s: %+v", direct.ProductCode, DiffParameters(&resp.Original, direct))
+	}
+}
+
+// TestIntegrationAlternatesPageSizeLimit checks that LCSC answers a page
+// size above 100 with envelope code 405. AlternateService.List refuses such
+// a page size before the request, so this test calls the transport
+// directly.
+func TestIntegrationAlternatesPageSizeLimit(t *testing.T) {
+	client := NewClient(WithoutCache())
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if _, err := client.Alternates.List(ctx, &AlternatesRequest{ProductCode: "C1525", PageSize: 101}); !errors.Is(err, ErrInvalidRequest) {
+		t.Fatalf("expected List to refuse page size 101, got %v", err)
+	}
+
+	params := url.Values{}
+	params.Set("productCode", "C1525")
+	params.Set("inStockOnly", "false")
+	params.Set("currentPage", "1")
+	params.Set("pageSize", "101")
+
+	start := time.Now()
+	var wrapper alternatesWrapper
+	err := client.do(ctx, http.MethodGet, "/product/alternate/part/list", params, nil, &wrapper)
+	t.Logf("alternates C1525 page size 101: %v, error %v", time.Since(start), err)
+	if !errors.Is(err, ErrInvalidRequest) {
+		t.Fatalf("expected ErrInvalidRequest (code 405) for page size 101, got %v", err)
 	}
 }

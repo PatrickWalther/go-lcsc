@@ -1,0 +1,549 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "rawMaterial": {
+      "productId": 1877,
+      "productCode": "C1525",
+      "productModel": "CL05B104KO5NNNC",
+      "brandId": 254,
+      "brandNameEn": "Samsung Electro-Mechanics",
+      "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+      "parentCatalogName": "Capacitors",
+      "wmCatalogId": 1142,
+      "encapStandard": "0402",
+      "productArrange": "Tape & Reel (TR)",
+      "productIntroEn": "100nF \u00b110% 16V Ceramic Capacitor X7R 0402",
+      "productCycle": "normal",
+      "isNotOverstock": false,
+      "isForeignOnsale": true,
+      "isPreSale": false,
+      "minBuyNumber": 100,
+      "maxBuyNumber": -1,
+      "split": 100,
+      "minPacketNumber": 10000,
+      "stockNumber": 0,
+      "stockSz": 0,
+      "stockJs": 0,
+      "wmStockHk": 0,
+      "productPriceList": [
+        {
+          "ladder": 100,
+          "productPrice": "0.0045",
+          "usdPrice": 0.0045,
+          "currencyPrice": 0.0045,
+          "currencySymbol": "$"
+        },
+        {
+          "ladder": 1000,
+          "productPrice": "0.0034",
+          "usdPrice": 0.0034,
+          "currencyPrice": 0.0034,
+          "currencySymbol": "$"
+        }
+      ],
+      "paramVOList": [
+        {
+          "paramCode": "param_10951_n",
+          "paramNameEn": "Capacitance",
+          "paramValueEn": "100nF",
+          "paramValueEnForSearch": 100000.0,
+          "isMain": true
+        },
+        {
+          "paramCode": "param_10927",
+          "paramNameEn": "Temperature Coefficient",
+          "paramValueEn": "X7R",
+          "paramValueEnForSearch": -1.0,
+          "isMain": true
+        },
+        {
+          "paramCode": "param_10923_s",
+          "paramNameEn": "Tolerance",
+          "paramValueEn": "\u00b110%",
+          "paramValueEnForSearch": null,
+          "isMain": true
+        },
+        {
+          "paramCode": "param_10924_n",
+          "paramNameEn": "Voltage Rating",
+          "paramValueEn": "16V",
+          "paramValueEnForSearch": 16.0,
+          "isMain": true
+        }
+      ],
+      "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221227_Samsung-Electro-Mechanics-CL05B104KO5NNNC_C1525_front.jpg",
+      "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C1525",
+      "hasThirdPartyStock": true,
+      "hasAlternatePart": true,
+      "matchType": null
+    },
+    "inStockCount": 52,
+    "pageInfo": {
+      "currPage": 1,
+      "pageRow": 100,
+      "totalPage": 1,
+      "totalRow": 99,
+      "dataList": [
+        {
+          "productId": 108210,
+          "productCode": "C106994",
+          "productModel": "GRM155R71C104KA88J",
+          "brandId": 79,
+          "brandNameEn": "muRata",
+          "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+          "parentCatalogName": "Capacitors",
+          "wmCatalogId": 1142,
+          "encapStandard": "0402",
+          "productArrange": "Tape & Reel (TR)",
+          "productIntroEn": "100nF \u00b110% 16V Ceramic Capacitor X7R 0402",
+          "productCycle": "normal",
+          "isNotOverstock": false,
+          "isForeignOnsale": true,
+          "isPreSale": false,
+          "minBuyNumber": 50,
+          "maxBuyNumber": -1,
+          "split": 50,
+          "minPacketNumber": 50000,
+          "stockNumber": 20600,
+          "stockSz": 20600,
+          "stockJs": 0,
+          "wmStockHk": 0,
+          "productPriceList": [
+            {
+              "ladder": 50,
+              "productPrice": "0.0100",
+              "usdPrice": 0.01,
+              "currencyPrice": 0.01,
+              "currencySymbol": "$"
+            },
+            {
+              "ladder": 500,
+              "productPrice": "0.0081",
+              "usdPrice": 0.0081,
+              "currencyPrice": 0.0081,
+              "currencySymbol": "$"
+            }
+          ],
+          "paramVOList": [
+            {
+              "paramCode": "param_10951_n",
+              "paramNameEn": "Capacitance",
+              "paramValueEn": "100nF",
+              "paramValueEnForSearch": 100000.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10927",
+              "paramNameEn": "Temperature Coefficient",
+              "paramValueEn": "X7R",
+              "paramValueEnForSearch": -1.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10923_s",
+              "paramNameEn": "Tolerance",
+              "paramValueEn": "\u00b110%",
+              "paramValueEnForSearch": null,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10924_n",
+              "paramNameEn": "Voltage Rating",
+              "paramValueEn": "16V",
+              "paramValueEnForSearch": 16.0,
+              "isMain": true
+            }
+          ],
+          "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20260810_muRata-GRM155R71C104KA88J_C106994_front.jpg",
+          "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/1c0e055aad254a09bfc0f6ba3f32eb9e.pdf?productCode=C106994",
+          "hasThirdPartyStock": false,
+          "hasAlternatePart": true,
+          "matchType": "5"
+        },
+        {
+          "productId": 72737,
+          "productCode": "C71629",
+          "productModel": "GRM155R71C104KA88D",
+          "brandId": 79,
+          "brandNameEn": "muRata",
+          "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+          "parentCatalogName": "Capacitors",
+          "wmCatalogId": 1142,
+          "encapStandard": "0402",
+          "productArrange": "Tape & Reel (TR)",
+          "productIntroEn": "100nF \u00b110% 16V Ceramic Capacitor X7R 0402",
+          "productCycle": "normal",
+          "isNotOverstock": false,
+          "isForeignOnsale": true,
+          "isPreSale": false,
+          "minBuyNumber": 100,
+          "maxBuyNumber": -1,
+          "split": 100,
+          "minPacketNumber": 10000,
+          "stockNumber": 997500,
+          "stockSz": 997500,
+          "stockJs": 0,
+          "wmStockHk": 0,
+          "productPriceList": [
+            {
+              "ladder": 100,
+              "productPrice": "0.0052",
+              "usdPrice": 0.0052,
+              "currencyPrice": 0.0052,
+              "currencySymbol": "$"
+            },
+            {
+              "ladder": 1000,
+              "productPrice": "0.0047",
+              "usdPrice": 0.0047,
+              "currencyPrice": 0.0047,
+              "currencySymbol": "$"
+            }
+          ],
+          "paramVOList": [
+            {
+              "paramCode": "param_10951_n",
+              "paramNameEn": "Capacitance",
+              "paramValueEn": "100nF",
+              "paramValueEnForSearch": 100000.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10927",
+              "paramNameEn": "Temperature Coefficient",
+              "paramValueEn": "X7R",
+              "paramValueEnForSearch": -1.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10923_s",
+              "paramNameEn": "Tolerance",
+              "paramValueEn": "\u00b110%",
+              "paramValueEnForSearch": null,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10924_n",
+              "paramNameEn": "Voltage Rating",
+              "paramValueEn": "16V",
+              "paramValueEnForSearch": 16.0,
+              "isMain": true
+            }
+          ],
+          "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221231_Murata-Electronics-GRM155R71C104KA88D_C71629_front.jpg",
+          "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/1c0e055aad254a09bfc0f6ba3f32eb9e.pdf?productCode=C71629",
+          "hasThirdPartyStock": false,
+          "hasAlternatePart": true,
+          "matchType": "5"
+        },
+        {
+          "productId": 2273082,
+          "productCode": "C2181015",
+          "productModel": "C1005X7R1H104K050BB",
+          "brandId": 369,
+          "brandNameEn": "TDK",
+          "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+          "parentCatalogName": "Capacitors",
+          "wmCatalogId": 1142,
+          "encapStandard": "0402",
+          "productArrange": "Tape & Reel (TR)",
+          "productIntroEn": "100nF \u00b110% 50V Ceramic Capacitor X7R 0402",
+          "productCycle": "normal",
+          "isNotOverstock": false,
+          "isForeignOnsale": true,
+          "isPreSale": false,
+          "minBuyNumber": 1,
+          "maxBuyNumber": -1,
+          "split": 1,
+          "minPacketNumber": 10000,
+          "stockNumber": 0,
+          "stockSz": 0,
+          "stockJs": 0,
+          "wmStockHk": 0,
+          "productPriceList": [
+            {
+              "ladder": 1,
+              "productPrice": "0.0489",
+              "usdPrice": 0.0489,
+              "currencyPrice": 0.0489,
+              "currencySymbol": "$"
+            },
+            {
+              "ladder": 10,
+              "productPrice": "0.0410",
+              "usdPrice": 0.041,
+              "currencyPrice": 0.041,
+              "currencySymbol": "$"
+            }
+          ],
+          "paramVOList": [
+            {
+              "paramCode": "param_10951_n",
+              "paramNameEn": "Capacitance",
+              "paramValueEn": "100nF",
+              "paramValueEnForSearch": 100000.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10927",
+              "paramNameEn": "Temperature Coefficient",
+              "paramValueEn": "X7R",
+              "paramValueEnForSearch": -1.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10923_s",
+              "paramNameEn": "Tolerance",
+              "paramValueEn": "\u00b110%",
+              "paramValueEnForSearch": null,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10924_n",
+              "paramNameEn": "Voltage Rating",
+              "paramValueEn": "50V",
+              "paramValueEnForSearch": 50.0,
+              "isMain": true
+            }
+          ],
+          "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20230105_TDK-C1005X7R1H104K050BB_C2181015_front.jpg",
+          "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/33b4b8c08af3afddaae4639ba73103ab.pdf?productCode=C2181015",
+          "hasThirdPartyStock": false,
+          "hasAlternatePart": true,
+          "matchType": "6"
+        },
+        {
+          "productId": 984061,
+          "productCode": "C913742",
+          "productModel": "GRM155R71C104JA88D",
+          "brandId": 79,
+          "brandNameEn": "muRata",
+          "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+          "parentCatalogName": "Capacitors",
+          "wmCatalogId": 1142,
+          "encapStandard": "0402",
+          "productArrange": "Tape & Reel (TR)",
+          "productIntroEn": "100nF \u00b15% 16V Ceramic Capacitor X7R 0402",
+          "productCycle": "normal",
+          "isNotOverstock": false,
+          "isForeignOnsale": true,
+          "isPreSale": false,
+          "minBuyNumber": 50,
+          "maxBuyNumber": -1,
+          "split": 50,
+          "minPacketNumber": 10000,
+          "stockNumber": 5300,
+          "stockSz": 5300,
+          "stockJs": 0,
+          "wmStockHk": 0,
+          "productPriceList": [
+            {
+              "ladder": 50,
+              "productPrice": "0.0173",
+              "usdPrice": 0.0173,
+              "currencyPrice": 0.0173,
+              "currencySymbol": "$"
+            },
+            {
+              "ladder": 500,
+              "productPrice": "0.0141",
+              "usdPrice": 0.0141,
+              "currencyPrice": 0.0141,
+              "currencySymbol": "$"
+            }
+          ],
+          "paramVOList": [
+            {
+              "paramCode": "param_10951_n",
+              "paramNameEn": "Capacitance",
+              "paramValueEn": "100nF",
+              "paramValueEnForSearch": 100000.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10927",
+              "paramNameEn": "Temperature Coefficient",
+              "paramValueEn": "X7R",
+              "paramValueEnForSearch": -1.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10923_s",
+              "paramNameEn": "Tolerance",
+              "paramValueEn": "\u00b15%",
+              "paramValueEnForSearch": null,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10924_n",
+              "paramNameEn": "Voltage Rating",
+              "paramValueEn": "16V",
+              "paramValueEnForSearch": 16.0,
+              "isMain": true
+            }
+          ],
+          "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20230130_Murata-Electronics-GRM155R71C104JA88D_C913742_front.jpg",
+          "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/1b07f9941a39059264f2a71984420091.pdf?productCode=C913742",
+          "hasThirdPartyStock": false,
+          "hasAlternatePart": true,
+          "matchType": "6"
+        },
+        {
+          "productId": 107098,
+          "productCode": "C105883",
+          "productModel": "CC0402KRX7R8BB104",
+          "brandId": 396,
+          "brandNameEn": "YAGEO",
+          "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+          "parentCatalogName": "Capacitors",
+          "wmCatalogId": 1142,
+          "encapStandard": "0402",
+          "productArrange": "Tape & Reel (TR)",
+          "productIntroEn": "100nF \u00b110% 25V Ceramic Capacitor X7R 0402",
+          "productCycle": "normal",
+          "isNotOverstock": false,
+          "isForeignOnsale": true,
+          "isPreSale": false,
+          "minBuyNumber": 100,
+          "maxBuyNumber": -1,
+          "split": 100,
+          "minPacketNumber": 10000,
+          "stockNumber": 2010400,
+          "stockSz": 2010400,
+          "stockJs": 0,
+          "wmStockHk": 0,
+          "productPriceList": [
+            {
+              "ladder": 100,
+              "productPrice": "0.0073",
+              "usdPrice": 0.0073,
+              "currencyPrice": 0.0073,
+              "currencySymbol": "$"
+            },
+            {
+              "ladder": 1000,
+              "productPrice": "0.0055",
+              "usdPrice": 0.0055,
+              "currencyPrice": 0.0055,
+              "currencySymbol": "$"
+            }
+          ],
+          "paramVOList": [
+            {
+              "paramCode": "param_10951_n",
+              "paramNameEn": "Capacitance",
+              "paramValueEn": "100nF",
+              "paramValueEnForSearch": 100000.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10927",
+              "paramNameEn": "Temperature Coefficient",
+              "paramValueEn": "X7R",
+              "paramValueEnForSearch": -1.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10923_s",
+              "paramNameEn": "Tolerance",
+              "paramValueEn": "\u00b110%",
+              "paramValueEnForSearch": null,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10924_n",
+              "paramNameEn": "Voltage Rating",
+              "paramValueEn": "25V",
+              "paramValueEnForSearch": 25.0,
+              "isMain": true
+            }
+          ],
+          "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20230102_YAGEO-CC0402KRX7R8BB104_C105883_front.jpg",
+          "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/23ccee80ee542e7cf156a772bb589942.pdf?productCode=C105883",
+          "hasThirdPartyStock": false,
+          "hasAlternatePart": true,
+          "matchType": "4"
+        },
+        {
+          "productId": 137807,
+          "productCode": "C126527",
+          "productModel": "GCM155R71E104KE02D",
+          "brandId": 79,
+          "brandNameEn": "muRata",
+          "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+          "parentCatalogName": "Capacitors",
+          "wmCatalogId": 1142,
+          "encapStandard": "0402",
+          "productArrange": "Tape & Reel (TR)",
+          "productIntroEn": "100nF \u00b110% 25V Ceramic Capacitor X7R 0402",
+          "productCycle": "normal",
+          "isNotOverstock": false,
+          "isForeignOnsale": true,
+          "isPreSale": false,
+          "minBuyNumber": 50,
+          "maxBuyNumber": -1,
+          "split": 50,
+          "minPacketNumber": 10000,
+          "stockNumber": 56000,
+          "stockSz": 56000,
+          "stockJs": 0,
+          "wmStockHk": 0,
+          "productPriceList": [
+            {
+              "ladder": 50,
+              "productPrice": "0.0102",
+              "usdPrice": 0.0102,
+              "currencyPrice": 0.0102,
+              "currencySymbol": "$"
+            },
+            {
+              "ladder": 500,
+              "productPrice": "0.0083",
+              "usdPrice": 0.0083,
+              "currencyPrice": 0.0083,
+              "currencySymbol": "$"
+            }
+          ],
+          "paramVOList": [
+            {
+              "paramCode": "param_10951_n",
+              "paramNameEn": "Capacitance",
+              "paramValueEn": "100nF",
+              "paramValueEnForSearch": 100000.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10927",
+              "paramNameEn": "Temperature Coefficient",
+              "paramValueEn": "X7R",
+              "paramValueEnForSearch": -1.0,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10923_s",
+              "paramNameEn": "Tolerance",
+              "paramValueEn": "\u00b110%",
+              "paramValueEnForSearch": null,
+              "isMain": true
+            },
+            {
+              "paramCode": "param_10924_n",
+              "paramNameEn": "Voltage Rating",
+              "paramValueEn": "25V",
+              "paramValueEnForSearch": 25.0,
+              "isMain": true
+            }
+          ],
+          "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20230102_Murata-Electronics-GCM155R71E104KE02D_C126527_front.jpg",
+          "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/cf81f1e8906b4fce97f8521551dd59a9.pdf?productCode=C126527",
+          "hasThirdPartyStock": false,
+          "hasAlternatePart": true,
+          "matchType": "4"
+        }
+      ],
+      "actualTotalRow": 99
+    }
+  },
+  "ok": true
+}

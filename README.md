@@ -67,7 +67,7 @@ func main() {
 
 ## Features
 
-- Service-based API: `client.Search` and `client.Product`
+- Service-based API: `client.Search`, `client.Product` and `client.Alternates`
 - Automatic retries with exponential backoff for transient failures
 - Token-bucket request rate limiting
 - Optional in-memory response caching with configurable TTL
@@ -157,7 +157,7 @@ for _, pb := range product.ProductPriceList {
 
 // Alternates that LCSC selects (up to five).
 for _, alt := range product.AlternatePartList {
-	fmt.Println(alt.ProductCode, alt.ProductModel, alt.MatchType)
+	fmt.Println(alt.ProductCode, alt.ProductModel, alt.Match().Label())
 }
 
 // Parameters.
@@ -192,8 +192,8 @@ Product fields:
 | `StockSz`, `StockJs`, `WmStockHk` | `stockSz`, `stockJs`, `wmStockHk` | Stock per warehouse. The sum is `StockNumber`. Detail responses send only `stockSz`. |
 | `Eccn` | `eccn` | Export control classification number. |
 | `FlashSale` | `flashSaleProductPO` | Time-limited third-party offer, or `nil`. |
-| `AlternatePartList` | `alternatePartList` | Alternates that LCSC selects (up to five). Only `Details` fills this list. |
-| `MatchType` | `matchType` | Match code of an alternate, for example `"1"`, `"4"`, `"5"` or `"6"`. LCSC does not document the codes. The type is `FlexString`, which accepts a JSON string, number or null. |
+| `AlternatePartList` | `alternatePartList` | Alternates that LCSC selects (up to five). Only `Details` fills this list. Use `client.Alternates.List` for the full cross-reference list. |
+| `MatchType` | `matchType` | Match code of an alternate, for example `"1"`, `"4"`, `"5"` or `"6"`. LCSC does not document the codes. The type is `FlexString`, which accepts a JSON string, number or null. Use `Match()` for a typed `MatchType`. |
 
 Product methods:
 
@@ -202,6 +202,7 @@ Product methods:
 | `Currency()` | Code of the response currency: `CurrencyType`, else the code for the price symbol, else `USD`. |
 | `Lifecycle()` | `LifecycleActive`, `LifecycleNotRecommended`, `LifecycleDiscontinued` or `LifecycleUnknown`. |
 | `AllowsBackorder()` | `false` when `IsNotOverstock` is `true` or `IsForeignOnsale` is `false`. |
+| `Match()` | `MatchType` as a typed `MatchType` value, with `Label()` and `IsDropIn()`. |
 
 `Lifecycle` gives `LifecycleDiscontinued` for `stop_product`. It gives `LifecycleNotRecommended` for other cycles that are not `normal`. It gives `LifecycleActive` for `normal`, and also for an empty cycle when the record has other lifecycle fields. It gives `LifecycleUnknown` when the record has no lifecycle data.
 
@@ -241,6 +242,72 @@ Parameter fields:
 | `ParamCode` | `paramCode` | LCSC identifier of the parameter, for example `param_10951_n`. |
 | `ParamValueEnForSearch` | `paramValueEnForSearch` | Numeric value that LCSC uses for parametric search. It uses base units, but capacitance is in pF (100nF gives `100000`). It is `nil` or `-1` when the value is not a single number. |
 | `IsMain` | `isMain` | `true` for the key parameters. A JSON null gives `false`. |
+
+### Alternate Service
+
+`client.Alternates.List` returns the cross-reference alternates of a product. It uses `/product/alternate/part/list`, which the LCSC cross-reference tool uses.
+
+```go
+resp, err := client.Alternates.List(ctx, &lcsc.AlternatesRequest{
+	ProductCode: "C1525",
+	InStockOnly: false,
+	Page:        1,
+	PageSize:    100,
+})
+if err != nil {
+	// handle error
+}
+
+fmt.Println(resp.Original.ProductCode, resp.TotalCount, resp.InStockCount)
+
+for i := range resp.Alternates {
+	alt := &resp.Alternates[i]
+	fmt.Println(alt.ProductCode, alt.Match().Label(), alt.Match().IsDropIn(), alt.StockNumber)
+
+	for _, d := range lcsc.DiffParameters(&resp.Original, alt) {
+		fmt.Println("  ", d.Kind, d.Name, d.OriginalValue, "->", d.AlternateValue)
+	}
+}
+```
+
+Request rules:
+
+- `ProductCode` is required. The client changes it to upper case, because LCSC finds no product for a lower-case code.
+- `Page` starts at 1. The client sends 1 when `Page` is 0.
+- `PageSize` is from 1 to 100. The client sends 100 when `PageSize` is 0. For a value above 100, the client returns `ErrInvalidRequest` and does not send the request. LCSC answers such a value with code 405.
+- `InStockOnly` counts LCSC retail stock only. LCSC does not count JLCPCB stock. An alternate with LCSC stock 0 can have JLCPCB stock.
+- The request has no sort options, because LCSC ignores the sort fields of this endpoint.
+
+Response fields:
+
+| Field | Description |
+|---|---|
+| `Original` | The product that the request names (`rawMaterial`). |
+| `Alternates` | The alternates on the page, in the server order. Each alternate is a full `Product` with a `MatchType`. |
+| `InStockCount` | Number of alternates with LCSC retail stock. `InStockOnly` does not change it. |
+| `TotalCount` | Number of alternates on all pages: `actualTotalRow`, else `totalRow`. |
+
+The server order is not always grouped by match type. Sort the list when the order is important. `List` returns `ErrNotFound` when LCSC does not know the product code. A known product with no alternates gives an empty `Alternates` list and no error. The client caches the response for `CacheConfig.SearchTTL`.
+
+Match types:
+
+| Code | `Label()` | `IsDropIn()` |
+|---|---|---|
+| `"2"` (`MatchTypeAltPackaging`) | `Alt. Packaging` | `true` |
+| `"5"` (`MatchTypeDirect`) | `Direct` | `true` |
+| `"6"` (`MatchTypeUpgrade`) | `Upgrade` | `false` |
+| any other code, for example `"1"`, `"3"` or `"4"` | `Similar` | `false` |
+| empty | empty | `false` |
+
+The labels come from the LCSC web client. LCSC does not document the codes.
+
+`DiffParameters(original, alt)` compares the parameters of two products and returns only the differences. Each `ParameterDiff` has a `Kind`:
+
+- `ParameterChanged`: both products have a value, and the values are different.
+- `ParameterMissing`: only the original product has a value.
+- `ParameterAdded`: only the alternate has a value.
+
+`DiffParameters` matches parameters on `ParamCode` first. Then it matches the remaining parameters on the name, and ignores case, spaces and punctuation in the name. LCSC uses different codes for the same parameter in some categories. Two values are equal when the text is equal without spaces, or when both have the same numeric `ParamValueEnForSearch`. The value comparison does not ignore case, because `1mΩ` and `1MΩ` are different. An empty value and `-` count as no value. `DiffParameters` does not compare the package (`EncapStandard`).
 
 ## Configuration Options
 
@@ -332,6 +399,9 @@ All API changes are additive. Existing code compiles without changes.
 - Envelope code 405 matches `ErrInvalidRequest`.
 - The client retries an envelope 5xx only one time. Before, it retried up to `MaxRetries` times.
 - The client honors `Retry-After` for HTTP 429 and envelope 429.
+- New `client.Alternates` service (`AlternateService`) with `List()`, and the types `AlternatesRequest` and `AlternatesResponse`.
+- New `MatchType` type with the methods `Label()` and `IsDropIn()`, the constants `MatchTypeAltPackaging`, `MatchTypeDirect` and `MatchTypeUpgrade`, and the new method `Product.Match()`. The field `Product.MatchType` keeps the type `FlexString`.
+- New `DiffParameters()` function with the types `ParameterDiff` and `ParameterDiffKind`.
 
 ## Changes In v1.1.0
 

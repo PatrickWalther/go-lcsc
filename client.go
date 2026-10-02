@@ -28,9 +28,10 @@ type Client struct {
 	cacheConfig CacheConfig
 	retryConfig RetryConfig
 
-	common  service
-	Search  *SearchService
-	Product *ProductService
+	common     service
+	Search     *SearchService
+	Product    *ProductService
+	Alternates *AlternateService
 }
 
 // ClientOption configures a Client.
@@ -140,6 +141,7 @@ func NewClient(opts ...ClientOption) *Client {
 	c.common.client = c
 	c.Search = (*SearchService)(&c.common)
 	c.Product = (*ProductService)(&c.common)
+	c.Alternates = (*AlternateService)(&c.common)
 	return c
 }
 

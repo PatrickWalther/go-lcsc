@@ -28,6 +28,9 @@ func TestNewClientDefaults(t *testing.T) {
 	if client.Product == nil {
 		t.Fatal("expected Product service to be initialized")
 	}
+	if client.Alternates == nil {
+		t.Fatal("expected Alternates service to be initialized")
+	}
 	if client.cache == nil {
 		t.Fatal("expected default cache to be initialized")
 	}
