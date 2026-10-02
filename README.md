@@ -5,9 +5,9 @@
 [![Tests](https://github.com/PatrickWalther/go-lcsc/actions/workflows/test.yml/badge.svg)](https://github.com/PatrickWalther/go-lcsc/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Unofficial Go client for [LCSC](https://www.lcsc.com) component search, parametric search, categories and product details.
+Unofficial Go client for [LCSC](https://www.lcsc.com) component search, parametric search, categories, product details, cross-reference alternates and marketplace offers.
 
-LCSC does not provide a documented public API for this data. This library uses undocumented endpoints that can change without notice.
+LCSC does not provide a documented public API for this data. This library uses undocumented endpoints that can change without notice. Read [Risks](#risks) before you use it.
 
 ## Requirements
 
@@ -67,8 +67,12 @@ func main() {
 
 ## Features
 
-- Service-based API: `client.Search`, `client.Product`, `client.Alternates` and `client.Catalog`
+- Service-based API: `client.Search`, `client.Product`, `client.Alternates`, `client.Catalog` and `client.ThirdParty`
 - Parametric search with category, package, manufacturer and parameter filters, and filter facets
+- Prices in the response currency, LCSC ids, lifecycle state and order limits
+- Cross-reference alternates with match types and a parameter comparison
+- Marketplace offers of third-party suppliers
+- Image size and datasheet URL helpers
 - Automatic retries with exponential backoff for transient failures
 - Token-bucket request rate limiting
 - Optional in-memory response caching with configurable TTL
@@ -348,10 +352,19 @@ Product methods:
 | `Match()` | `MatchType` as a typed `MatchType` value, with `Label()` and `IsDropIn()`. |
 | `CatalogPath()` | Category path from the root category to the leaf category. It uses `ParentCatalogList` (detail) or the list-row path fields. |
 | `SimilarFilter(relax...)` | Filter for products like this product. See [Parametric Search](#parametric-search). |
+| `ImageURL(size)` | First product image at the size `ImageSizeSmall`, `ImageSizeMedium` or `ImageSizeLarge`. See [Media Helpers](#media-helpers). |
 
 `Lifecycle` gives `LifecycleDiscontinued` for `stop_product`. It gives `LifecycleNotRecommended` for other cycles that are not `normal`. It gives `LifecycleActive` for `normal`, and also for an empty cycle when the record has other lifecycle fields. It gives `LifecycleUnknown` when the record has no lifecycle data.
 
-### Prices and currency
+Parameter fields:
+
+| Field | JSON | Description |
+|---|---|---|
+| `ParamCode` | `paramCode` | LCSC identifier of the parameter, for example `param_10951_n`. |
+| `ParamValueEnForSearch` | `paramValueEnForSearch` | Numeric value that LCSC uses for parametric search. It uses base units, but capacitance is in pF (100nF gives `100000`). It is `nil` or `-1` when the value is not a single number. |
+| `IsMain` | `isMain` | `true` for the key parameters. A JSON null gives `false`. |
+
+### Prices and Currency
 
 LCSC supports four currencies (`lcsc.SupportedCurrencies`): USD (`$`), CNY (`￥`, U+FFE5), EUR (`€`) and HKD (`HK$`). The client sends the code of `WithCurrency` in the `currencyCode` cookie. For any other code, LCSC answers in USD.
 
@@ -363,7 +376,7 @@ Each `PriceBreak` has three prices:
 | `USDPrice` | `usdPrice` | Unit price in USD. |
 | `CurrencyPrice` | `currencyPrice` | Unit price in the response currency. LCSC rounds it. Do not calculate it again. |
 
-`PriceBreak.Price()` returns `CurrencyPrice` when it is more than zero, else `ProductPrice`. `Product.Currency()` gives the code of that currency.
+`PriceBreak.Price()` returns `CurrencyPrice` when it is more than zero. Else it returns `ProductPrice`, and when that is also zero, `USDPrice`. `Product.Currency()` gives the code of the `Price()` currency.
 
 ```go
 client := lcsc.NewClient(lcsc.WithCurrency("EUR"))
@@ -379,14 +392,6 @@ for _, pb := range product.ProductPriceList {
 ```
 
 `FlashSale` has its own price and currency: `SellPrice` in `SellCurrencyType`, and `USDPrice`. Show `ValidNumber` as the quantity on offer. `DeliveryDays()` gives the minimum and the maximum delivery time.
-
-Parameter fields:
-
-| Field | JSON | Description |
-|---|---|---|
-| `ParamCode` | `paramCode` | LCSC identifier of the parameter, for example `param_10951_n`. |
-| `ParamValueEnForSearch` | `paramValueEnForSearch` | Numeric value that LCSC uses for parametric search. It uses base units, but capacitance is in pF (100nF gives `100000`). It is `nil` or `-1` when the value is not a single number. |
-| `IsMain` | `isMain` | `true` for the key parameters. A JSON null gives `false`. |
 
 ### Alternate Service
 
@@ -453,6 +458,104 @@ The labels come from the LCSC web client. LCSC does not document the codes.
 - `ParameterAdded`: only the alternate has a value.
 
 `DiffParameters` matches parameters on `ParamCode` first. Then it matches the remaining parameters on the name, and ignores case, spaces and punctuation in the name. LCSC uses different codes for the same parameter in some categories. Two values are equal when the text is equal without spaces, or when both have the same numeric `ParamValueEnForSearch`. The value comparison does not ignore case, because `1mΩ` and `1MΩ` are different. An empty value and `-` count as no value. `DiffParameters` does not compare the package (`EncapStandard`).
+
+### Third Party Service
+
+`client.ThirdParty` reads the marketplace offers of a product. A marketplace offer is stock of a third-party supplier, for example Waldom or Rochester, that LCSC sells in addition to its own stock. Each offer has its own stock, minimum order, order multiple, price ladder and delivery time.
+
+```go
+resp, err := client.ThirdParty.Offers(ctx, &lcsc.OffersRequest{ProductCode: "C8734"})
+if err != nil {
+	// handle error
+}
+
+for _, offer := range resp.Offers {
+	minDays, maxDays, _ := offer.DeliveryDays()
+	fmt.Printf("%s: %d pcs, MOQ %d, multiple %d, %d-%d days\n",
+		offer.Source, offer.StockNumber, offer.MinBuyNumber, offer.Split, minDays, maxDays)
+	for _, pb := range offer.ProductPriceList {
+		fmt.Printf("  %d+: %.4f %s\n", pb.Ladder, pb.Price(), offer.Currency())
+	}
+}
+
+hasOffers, err := client.ThirdParty.HasStock(ctx, "C8734")
+```
+
+`Offers` sends the request to `/search/third`. Request rules:
+
+- Set `ProductCode` or `Keyword`. Do not set both. The client changes `ProductCode` to upper case. A `Keyword` such as `STM32F103` gives the offers of all products that match it.
+- `Page` starts at 1. `PageSize` is from 1 to 100. The client sends 10 when `PageSize` is 0. LCSC accepted 100. A larger page size was not checked.
+- The client returns `ErrInvalidRequest` and does not send the request in these cases: a nil request, no selector, two selectors, a negative page, and a page size outside 0 to 100.
+- A product with no offers gives an empty `Offers` list and no error. LCSC sends the same answer for an unknown product code.
+
+Offer fields:
+
+| Field | JSON | Description |
+|---|---|---|
+| `ProductCode` | `productCode` | LCSC product code. |
+| `ManufacturerPartNumber` | `productCodeManufacturer` | Manufacturer part number. |
+| `ProductModel` | `productModel` | Title of the offer, for example `STM32F103C8T6 ST 26+`. For Rochester, it is an id of the supplier. |
+| `BrandID`, `BrandNameEn` | `brandId`, `brandNameEn` | LCSC manufacturer id and name. |
+| `SupplierBrandName` | `lcOrderBrandNameEn` | Manufacturer name of the supplier, for example `STMICRO`. |
+| `Source` | `productSource` | Supplier, for example `waldom` or `rochester`. |
+| `VendorCode` | `vendorCode` | LCSC code of the offer, for example `G12277`. |
+| `StockNumber` | `stockNumber` | Quantity on offer. |
+| `MinBuyNumber` | `minBuyNumber` | Minimum order quantity of the offer. |
+| `Split` | `split` | Order multiple of the offer. |
+| `DeliveryTimeWayDays` | `deliveryTimeWayDays` | Minimum and maximum delivery time in days. Use `DeliveryDays()`. |
+| `ProductPriceList` | `productPriceList` | Price ladder with `CurrencyPrice` and `USDPrice`, but no `ProductPrice`. Use `PriceBreak.Price()` and `Offer.Currency()`. |
+| `BatchCode` | `batchNumberEn` | Date code of the lot, for example `26+` or `2551`. |
+| `IsOnsale` | `isOnsale` | `true` when the offer is open. |
+| `IsPriceFirst`, `IsStockFirst`, `IsDeliveryTimeFirst` | same names | Badges for the best price, the most stock and the shortest delivery time. The meaning comes from the names and the data (inferred). |
+
+Offer rows send no `currencyType`, so `Offer.Currency()` gets the currency code from the price symbol. The offers are information only. JLCPCB pre-orders do not use them (inferred).
+
+`HasStock` sends the request to `/search/has/third/stock`. It answers `false` for an unknown product code. A detail response sends `HasThirdPartyStock` as `false` also for products with offers. Use `HasStock`, or the `HasThirdPartyStock` field of a list row.
+
+The client caches `Offers` and `HasStock` for `CacheConfig.SearchTTL`.
+
+### Media Helpers
+
+LCSC stores each product image in three sizes under the same file name. The image URLs are not signed and need no Referer. `lcsc.ImageURLAtSize` changes the size segment of an image URL and sends no request.
+
+```go
+small := "https://assets.lcsc.com/images/lcsc/96x96/20221227_Samsung-Electro-Mechanics-CL05B104KO5NNNC_C1525_front.jpg"
+
+large := lcsc.ImageURLAtSize(small, lcsc.ImageSizeLarge)
+// https://assets.lcsc.com/images/lcsc/900x900/20221227_Samsung-Electro-Mechanics-CL05B104KO5NNNC_C1525_front.jpg
+
+thumb := product.ImageURL(lcsc.ImageSizeMedium) // first product image at 224x224
+```
+
+| Constant | Size | Source in the responses |
+|---|---|---|
+| `ImageSizeSmall` | 96x96 | `ProductImageURL` of list rows |
+| `ImageSizeMedium` | 224x224 | none |
+| `ImageSizeLarge` | 900x900 | `ProductImages` of detail responses, `ProductImageURLBig` of list rows |
+
+`ImageURLAtSize` returns the URL with no change when the host is not `assets.lcsc.com`, when the path does not start with `/images/`, or when the path has no size segment.
+
+`client.Product.ResolveDatasheetURL` returns a URL that sends the datasheet PDF file. LCSC and JLCPCB use several URL forms for one datasheet:
+
+| Input form | Example | Result | Requests |
+|---|---|---|---|
+| Direct file | `https://datasheet.lcsc.com/datasheet/pdf/{hash}.pdf?productCode=C1525` (`Product.PdfURL`) | The same URL | 0 |
+| Legacy file | `https://datasheet.lcsc.com/lcsc/{file}.pdf` | `https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/{file}.pdf` | 0 |
+| Viewer page | `https://www.lcsc.com/datasheet/C1525.pdf`, or the JLCPCB form `https://www.lcsc.com/datasheet/lcsc_datasheet_{file}.pdf` | The `previewPdfUrl` of the page (a direct file URL) | 1 |
+| Other http or https URL | `https://www.ti.com/lit/ds/symlink/lm358.pdf` | The same URL | 0 |
+
+```go
+pdfURL, err := client.Product.ResolveDatasheetURL(ctx, "https://www.lcsc.com/datasheet/C1525.pdf")
+if err != nil {
+	// handle error
+}
+fmt.Println(pdfURL) // https://datasheet.lcsc.com/datasheet/pdf/....pdf?productCode=C1525
+```
+
+- The viewer page is HTML, although its name ends with `.pdf`. The legacy form sends a redirect to the viewer page.
+- The client follows a redirect only to another viewer page or to a PDF file on an LCSC host. For an unknown product, LCSC sends a redirect to the home page. `ResolveDatasheetURL` then returns `ErrNotFound`.
+- An empty value, or a value that is not an absolute http or https URL, gives `ErrInvalidRequest`. For example, JLCPCB sends `--` for a part with no datasheet.
+- The viewer request uses the rate limiter and the retry rules of the client. The client caches the result for 24 hours.
 
 ## Configuration Options
 
@@ -529,6 +632,19 @@ if err != nil {
 }
 ```
 
+## Risks
+
+- **Undocumented endpoints.** LCSC does not document the endpoints that this library uses. LCSC can change or remove them without notice. The weekly integration workflow (`.github/workflows/integration.yml`) runs contract tests against the live endpoints. Run the integration tests before you upgrade.
+- **Errors arrive with HTTP 200.** LCSC sends most errors in the response envelope with HTTP status 200, for example code 405 for an invalid field and code 500 for a server error. The client maps the envelope code to the typed errors. Some failures give no error at all:
+  - An unknown parameter name or value in `Filter.Params` gives 0 rows. Treat 0 rows with a parameter filter as a sign to check the facet names.
+  - A parent category id in `Filter.CatalogIDs` gives 0 rows.
+  - An unknown product code gives an empty offer list, and `HasStock` gives `false`.
+- **5000-row cap.** `/product/query/list` returns at most 5000 rows for one filter, and its `totalRow` value stops at 5000. `List` refuses a page after row 5000. Use `ActualTotal` or `ActualTotalCount` for the real count. Narrow the filter to get other rows.
+- **Request protection.** The LCSC web client encrypts the search keyword of `/search/v3/global` with SM2. Each LCSC response also sends a key pair in the `x_web_cipher_pairs` header. These are anti-scraping controls. This library sends the keyword as plain text, which LCSC accepts today. Do not reproduce the SM2 keyword encryption in this library or in your code. If LCSC stops accepting the plain keyword, use `List` with `Filter.Keyword`.
+- **Rate limits.** LCSC does not publish rate limits. The default client sends at most 5 requests per second. Keep interactive use at 1 to 2 requests per second, and bulk jobs lower. The client honors `Retry-After` (see [Retry Controls](#retry-controls)).
+- **Inferred rules.** Some rules come from live data and from the LCSC web client, not from documentation. Examples are `Product.AllowsBackorder()`, `MatchType.IsDropIn()`, the offer badges and some page size limits. The Go doc comments mark these rules as inferred.
+- **Terms of use.** The terms of the LCSC partner API forbid bulk capture of LCSC data. They also forbid hosting of LCSC data, datasheets or images for third parties. Read the LCSC terms before you store or share data from this library.
+
 ## Changes In v1.2.0
 
 All API changes are additive. Existing code compiles without changes.
@@ -551,6 +667,9 @@ All API changes are additive. Existing code compiles without changes.
 - New `SearchService` methods: `List()`, `Facets()`, `Route()`, `Parametric()` and `Similar()`. New types: `Filter`, `ListRequest`, `ListResponse`, `SortField`, `Facets`, `FacetBrand`, `ParamFacet`, `FacetValue`, `Route`, `RouteScene`, `RouteCategory`, `ParametricOptions` and `SimilarOptions`.
 - New `Product` fields: `WmCatalogNameEn`, `ParentCatalogList`, `FirstWmCatalogID` to `SixthWmCatalogID` with their names, and `MoistureSensitivityLevel`. New methods: `Product.CatalogPath()` and `Product.SimilarFilter()`.
 - `Search.Keyword` returns products for a parameter query. Before, it returned an empty list. It now sends a second request to `/product/query/list` with the categories of the v3 response. `ParametricQuery` stays `true`.
+- New `client.ThirdParty` service (`ThirdPartyService`) with `Offers()` and `HasStock()`, and the types `OffersRequest`, `OffersResponse` and `Offer`.
+- New `ImageSize` type with the constants `ImageSizeSmall`, `ImageSizeMedium` and `ImageSizeLarge`, the new function `ImageURLAtSize()` and the new method `Product.ImageURL()`.
+- New method `ProductService.ResolveDatasheetURL()`. It changes a legacy or viewer datasheet URL to a URL that sends the PDF file.
 
 ## Changes In v1.1.0
 
@@ -596,6 +715,8 @@ go test ./...
 ```bash
 go test -tags=integration -run Integration ./...
 ```
+
+The integration tests send about 25 read-only requests to the live LCSC endpoints.
 
 ## License
 

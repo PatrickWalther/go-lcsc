@@ -1,0 +1,117 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "totalCount": 72,
+    "currentPage": 1,
+    "pageSize": 100,
+    "currentCount": 72,
+    "productList": [
+      {
+        "productModel": "STM32F103RCT7-LC26071614716",
+        "encapStandard": null,
+        "lcOrderBrandNameEn": "STMICROELECTRONICS (EUR S&D)",
+        "pdfUrl": null,
+        "productImageUrl": null,
+        "productImageUrlBig": null,
+        "productPriceList": [
+          {
+            "ladder": 160,
+            "currencyPrice": 8.5611,
+            "usdPrice": 8.5611,
+            "currencySymbol": "$"
+          }
+        ],
+        "minBuyNumber": 160,
+        "minPacketNumber": 160,
+        "split": 160,
+        "stockNumber": 10610,
+        "deliveryTimeWayDays": [
+          11,
+          16
+        ],
+        "productIntroEn": null,
+        "productCode": "C882165",
+        "isOnsale": true,
+        "vendorCode": "G8237",
+        "brandId": 74,
+        "brandNameEn": "ST",
+        "productSource": "waldom",
+        "batchNumber": "DC两年内",
+        "batchNumberEn": null,
+        "eccn": "3A991A2",
+        "productCodeManufacturer": "STM32F103RCT7",
+        "isPriceFirst": null,
+        "isStockFirst": null,
+        "isDeliveryTimeFirst": null,
+        "supplyChannelType": "lc_order",
+        "wmCatalogId": null
+      },
+      {
+        "productModel": "01t4w00000PQNH0AAP",
+        "encapStandard": null,
+        "lcOrderBrandNameEn": "STMicroelectronics",
+        "pdfUrl": null,
+        "productImageUrl": null,
+        "productImageUrlBig": "https://embed.widencdn.net/img/rocelec/vfpdykkuhs/640px/qfp50p900x900x160-48l30_adi_n.step.png?keep=c&crop=yes&u=5oefqw",
+        "productPriceList": [
+          {
+            "ladder": 25,
+            "currencyPrice": 5.042,
+            "usdPrice": 5.042,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 100,
+            "currencyPrice": 4.7376,
+            "usdPrice": 4.7376,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 500,
+            "currencyPrice": 4.4508,
+            "usdPrice": 4.4508,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "currencyPrice": 4.1565,
+            "usdPrice": 4.1565,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 10000,
+            "currencyPrice": 4.0285,
+            "usdPrice": 4.0285,
+            "currencySymbol": "$"
+          }
+        ],
+        "minBuyNumber": 95,
+        "minPacketNumber": null,
+        "split": 1,
+        "stockNumber": 12000,
+        "deliveryTimeWayDays": [
+          12,
+          20
+        ],
+        "productIntroEn": null,
+        "productCode": "C2053946",
+        "isOnsale": true,
+        "vendorCode": "G9851",
+        "brandId": 74,
+        "brandNameEn": "ST",
+        "productSource": "rochester",
+        "batchNumber": null,
+        "batchNumberEn": null,
+        "eccn": "3A991A2",
+        "productCodeManufacturer": "STM32F103C6T6ATR",
+        "isPriceFirst": null,
+        "isStockFirst": null,
+        "isDeliveryTimeFirst": null,
+        "supplyChannelType": "lc_order",
+        "wmCatalogId": null
+      }
+    ]
+  },
+  "ok": true
+}

@@ -1,0 +1,245 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "totalCount": 7,
+    "currentPage": 1,
+    "pageSize": 10,
+    "currentCount": 7,
+    "productList": [
+      {
+        "productModel": "STM32F103C8T6 ST(意法半导体) 26+",
+        "encapStandard": null,
+        "lcOrderBrandNameEn": "ST",
+        "pdfUrl": null,
+        "productImageUrl": null,
+        "productImageUrlBig": null,
+        "productPriceList": [
+          {
+            "ladder": 1,
+            "currencyPrice": 1.1861,
+            "usdPrice": 1.1861,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 50,
+            "currencyPrice": 1.0949,
+            "usdPrice": 1.0949,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 100,
+            "currencyPrice": 1.0766,
+            "usdPrice": 1.0766,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 500,
+            "currencyPrice": 1.0401,
+            "usdPrice": 1.0401,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "currencyPrice": 1.0219,
+            "usdPrice": 1.0219,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 2000,
+            "currencyPrice": 1.0036,
+            "usdPrice": 1.0036,
+            "currencySymbol": "$"
+          }
+        ],
+        "minBuyNumber": 1,
+        "minPacketNumber": 1,
+        "split": 1,
+        "stockNumber": 5000,
+        "deliveryTimeWayDays": [
+          13,
+          15
+        ],
+        "productIntroEn": null,
+        "productCode": "C8734",
+        "isOnsale": true,
+        "vendorCode": "G12277",
+        "brandId": 74,
+        "brandNameEn": "ST",
+        "productSource": "waldom",
+        "batchNumber": "26+",
+        "batchNumberEn": "26+",
+        "eccn": "3A991A2",
+        "productCodeManufacturer": "STM32F103C8T6",
+        "isPriceFirst": true,
+        "isStockFirst": null,
+        "isDeliveryTimeFirst": null,
+        "supplyChannelType": "lc_order",
+        "wmCatalogId": null
+      },
+      {
+        "productModel": "STM32F103C8T6 STMICRO 22+",
+        "encapStandard": null,
+        "lcOrderBrandNameEn": "STMICRO",
+        "pdfUrl": null,
+        "productImageUrl": null,
+        "productImageUrlBig": null,
+        "productPriceList": [
+          {
+            "ladder": 10000,
+            "currencyPrice": 5.2253,
+            "usdPrice": 5.2253,
+            "currencySymbol": "$"
+          }
+        ],
+        "minBuyNumber": 10000,
+        "minPacketNumber": 10000,
+        "split": 10000,
+        "stockNumber": 120000,
+        "deliveryTimeWayDays": [
+          9,
+          11
+        ],
+        "productIntroEn": null,
+        "productCode": "C8734",
+        "isOnsale": true,
+        "vendorCode": "G12624",
+        "brandId": 74,
+        "brandNameEn": "ST",
+        "productSource": "waldom",
+        "batchNumber": "22+",
+        "batchNumberEn": "22+",
+        "eccn": "3A991A2",
+        "productCodeManufacturer": "STM32F103C8T6",
+        "isPriceFirst": null,
+        "isStockFirst": true,
+        "isDeliveryTimeFirst": null,
+        "supplyChannelType": "lc_order",
+        "wmCatalogId": null
+      },
+      {
+        "productModel": "STM32F103C8T6 ST 25+",
+        "encapStandard": null,
+        "lcOrderBrandNameEn": "ST",
+        "pdfUrl": null,
+        "productImageUrl": null,
+        "productImageUrlBig": null,
+        "productPriceList": [
+          {
+            "ladder": 1,
+            "currencyPrice": 1.3067,
+            "usdPrice": 1.3067,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 50,
+            "currencyPrice": 1.2062,
+            "usdPrice": 1.2062,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 100,
+            "currencyPrice": 1.1861,
+            "usdPrice": 1.1861,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 500,
+            "currencyPrice": 1.1459,
+            "usdPrice": 1.1459,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 1000,
+            "currencyPrice": 1.1258,
+            "usdPrice": 1.1258,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 2000,
+            "currencyPrice": 1.1057,
+            "usdPrice": 1.1057,
+            "currencySymbol": "$"
+          }
+        ],
+        "minBuyNumber": 1,
+        "minPacketNumber": 1,
+        "split": 1,
+        "stockNumber": 6000,
+        "deliveryTimeWayDays": [
+          3,
+          5
+        ],
+        "productIntroEn": null,
+        "productCode": "C8734",
+        "isOnsale": true,
+        "vendorCode": "G12864",
+        "brandId": 74,
+        "brandNameEn": "ST",
+        "productSource": "waldom",
+        "batchNumber": "25+",
+        "batchNumberEn": "25+",
+        "eccn": "3A991A2",
+        "productCodeManufacturer": "STM32F103C8T6",
+        "isPriceFirst": null,
+        "isStockFirst": null,
+        "isDeliveryTimeFirst": true,
+        "supplyChannelType": "lc_order",
+        "wmCatalogId": null
+      },
+      {
+        "productModel": "STM32F103C8T6 STMicroelectronics 2551",
+        "encapStandard": null,
+        "lcOrderBrandNameEn": "STMicroelectronics",
+        "pdfUrl": null,
+        "productImageUrl": null,
+        "productImageUrlBig": null,
+        "productPriceList": [
+          {
+            "ladder": 1500,
+            "currencyPrice": 1.3791,
+            "usdPrice": 1.3791,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 3000,
+            "currencyPrice": 1.3666,
+            "usdPrice": 1.3666,
+            "currencySymbol": "$"
+          },
+          {
+            "ladder": 4500,
+            "currencyPrice": 1.3542,
+            "usdPrice": 1.3542,
+            "currencySymbol": "$"
+          }
+        ],
+        "minBuyNumber": 1500,
+        "minPacketNumber": 1500,
+        "split": 1500,
+        "stockNumber": 4500,
+        "deliveryTimeWayDays": [
+          5,
+          7
+        ],
+        "productIntroEn": null,
+        "productCode": "C8734",
+        "isOnsale": true,
+        "vendorCode": "G11210",
+        "brandId": 74,
+        "brandNameEn": "ST",
+        "productSource": "waldom",
+        "batchNumber": "2551",
+        "batchNumberEn": "2551",
+        "eccn": "3A991A2",
+        "productCodeManufacturer": "STM32F103C8T6",
+        "isPriceFirst": null,
+        "isStockFirst": null,
+        "isDeliveryTimeFirst": null,
+        "supplyChannelType": "lc_order",
+        "wmCatalogId": null
+      }
+    ]
+  },
+  "ok": true
+}

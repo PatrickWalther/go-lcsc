@@ -33,6 +33,7 @@ type Client struct {
 	Product    *ProductService
 	Alternates *AlternateService
 	Catalog    *CatalogService
+	ThirdParty *ThirdPartyService
 }
 
 // ClientOption configures a Client.
@@ -144,6 +145,7 @@ func NewClient(opts ...ClientOption) *Client {
 	c.Product = (*ProductService)(&c.common)
 	c.Alternates = (*AlternateService)(&c.common)
 	c.Catalog = (*CatalogService)(&c.common)
+	c.ThirdParty = (*ThirdPartyService)(&c.common)
 	return c
 }
 

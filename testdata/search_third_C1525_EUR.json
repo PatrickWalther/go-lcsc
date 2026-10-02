@@ -1,0 +1,53 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "totalCount": 1,
+    "currentPage": 1,
+    "pageSize": 3,
+    "currentCount": 1,
+    "productList": [
+      {
+        "productModel": "CL05B104KO5NNNC SAMSUNG 26+",
+        "encapStandard": "0402-X7R-16V",
+        "lcOrderBrandNameEn": "SAMSUNG",
+        "pdfUrl": null,
+        "productImageUrl": null,
+        "productImageUrlBig": null,
+        "productPriceList": [
+          {
+            "ladder": 100000,
+            "currencyPrice": 0.0016,
+            "usdPrice": 0.0017,
+            "currencySymbol": "€"
+          }
+        ],
+        "minBuyNumber": 100000,
+        "minPacketNumber": 100000,
+        "split": 10000,
+        "stockNumber": 200000,
+        "deliveryTimeWayDays": [
+          7,
+          9
+        ],
+        "productIntroEn": "100nF ±10% 16V Ceramic Capacitor X7R 0402",
+        "productCode": "C1525",
+        "isOnsale": true,
+        "vendorCode": "G8604",
+        "brandId": 254,
+        "brandNameEn": "Samsung Electro-Mechanics",
+        "productSource": "waldom",
+        "batchNumber": "26+",
+        "batchNumberEn": "26+",
+        "eccn": "EAR99",
+        "productCodeManufacturer": "CL05B104KO5NNNC",
+        "isPriceFirst": true,
+        "isStockFirst": true,
+        "isDeliveryTimeFirst": true,
+        "supplyChannelType": "lc_order",
+        "wmCatalogId": null
+      }
+    ]
+  },
+  "ok": true
+}

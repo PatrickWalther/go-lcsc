@@ -34,6 +34,9 @@ func TestNewClientDefaults(t *testing.T) {
 	if client.Catalog == nil {
 		t.Fatal("expected Catalog service to be initialized")
 	}
+	if client.ThirdParty == nil {
+		t.Fatal("expected ThirdParty service to be initialized")
+	}
 	if client.cache == nil {
 		t.Fatal("expected default cache to be initialized")
 	}

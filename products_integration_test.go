@@ -6,8 +6,11 @@ package lcsc
 import (
 	"context"
 	"errors"
+	"io"
+	"mime"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 )
@@ -398,5 +401,112 @@ func TestIntegrationCatalogTree(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected category 1142 with products in %+v", counts)
+	}
+}
+
+// TestIntegrationThirdPartyOffersC8734 checks the marketplace offer
+// endpoints. C8734 had 7 offers with 3,000 to 120,000 pieces and a
+// delivery time of 3 to 15 days.
+func TestIntegrationThirdPartyOffersC8734(t *testing.T) {
+	client := newPoliteIntegrationClient()
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	resp, err := client.ThirdParty.Offers(ctx, &OffersRequest{ProductCode: "C8734"})
+	t.Logf("offers C8734: %v, error %v", time.Since(start), err)
+	if err != nil {
+		t.Fatalf("offers failed: %v", err)
+	}
+	if len(resp.Offers) == 0 {
+		t.Fatal("expected offers for C8734")
+	}
+	if resp.TotalCount < len(resp.Offers) {
+		t.Fatalf("unexpected total %d for %d offers", resp.TotalCount, len(resp.Offers))
+	}
+
+	sources := map[string]int{}
+	for i := range resp.Offers {
+		offer := &resp.Offers[i]
+		sources[offer.Source]++
+		minDays, maxDays, ok := offer.DeliveryDays()
+		if offer.ProductCode != "C8734" || offer.StockNumber <= 0 || offer.MinBuyNumber <= 0 || !ok || minDays > maxDays {
+			t.Fatalf("offer %d: unexpected values: code %q, stock %d, moq %d, days %d-%d (%v)",
+				i, offer.ProductCode, offer.StockNumber, offer.MinBuyNumber, minDays, maxDays, ok)
+		}
+		if len(offer.ProductPriceList) == 0 || offer.ProductPriceList[0].Price() <= 0 || offer.ProductPriceList[0].USDPrice <= 0 {
+			t.Fatalf("offer %d: expected a price ladder with currencyPrice and usdPrice, got %+v", i, offer.ProductPriceList)
+		}
+		if offer.Currency() != "USD" {
+			t.Fatalf("offer %d: expected USD, got %q", i, offer.Currency())
+		}
+		t.Logf("offer %d: %s, stock %d, moq %d, split %d, %d-%d days, %d breaks, first %.4f USD",
+			i, offer.Source, offer.StockNumber, offer.MinBuyNumber, offer.Split, minDays, maxDays,
+			len(offer.ProductPriceList), offer.ProductPriceList[0].Price())
+	}
+	t.Logf("%d offers (total %d), sources %v", len(resp.Offers), resp.TotalCount, sources)
+
+	start = time.Now()
+	hasStock, err := client.ThirdParty.HasStock(ctx, "C8734")
+	t.Logf("has third-party stock C8734: %v, error %v", time.Since(start), err)
+	if err != nil {
+		t.Fatalf("has stock failed: %v", err)
+	}
+	if !hasStock {
+		t.Fatal("expected third-party stock for C8734")
+	}
+}
+
+// TestIntegrationResolveDatasheetURLC1525 checks that the datasheet viewer
+// page of C1525 gives a URL that sends a PDF file.
+func TestIntegrationResolveDatasheetURLC1525(t *testing.T) {
+	client := newPoliteIntegrationClient()
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	const viewerURL = "https://www.lcsc.com/datasheet/C1525.pdf"
+	start := time.Now()
+	pdfURL, err := client.Product.ResolveDatasheetURL(ctx, viewerURL)
+	t.Logf("resolve %s: %v, error %v", viewerURL, time.Since(start), err)
+	if err != nil {
+		t.Fatalf("resolve failed: %v", err)
+	}
+	t.Logf("datasheet URL %s", pdfURL)
+	if !strings.HasPrefix(pdfURL, "https://datasheet.lcsc.com/datasheet/pdf/") || !strings.Contains(pdfURL, "C1525") {
+		t.Fatalf("unexpected datasheet URL %q", pdfURL)
+	}
+
+	// Read only the first bytes of the file.
+	time.Sleep(time.Second)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pdfURL, nil)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Range", "bytes=0-1023")
+
+	start = time.Now()
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("download failed: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	head, err := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	t.Logf("datasheet range request: %v, status %d, content type %q, error %v", time.Since(start), resp.StatusCode, resp.Header.Get("Content-Type"), err)
+	if err != nil {
+		t.Fatalf("read failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		t.Fatalf("unexpected status %d", resp.StatusCode)
+	}
+	if mediaType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type")); err != nil || mediaType != "application/pdf" {
+		t.Fatalf("expected application/pdf, got %q", resp.Header.Get("Content-Type"))
+	}
+	if !strings.HasPrefix(string(head), "%PDF-") {
+		t.Fatalf("expected a PDF file, got %q", head[:min(len(head), 16)])
 	}
 }

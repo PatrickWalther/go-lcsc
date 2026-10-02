@@ -137,12 +137,17 @@ type PriceBreak struct {
 
 // Price returns the unit price in the response currency. It returns
 // CurrencyPrice when CurrencyPrice is more than zero. Else it returns
-// ProductPrice, which is in USD.
+// ProductPrice, which is in USD. When ProductPrice is also zero, it returns
+// USDPrice. Offer rows (see [Offer]) send no ProductPrice.
 func (pb PriceBreak) Price() float64 {
-	if pb.CurrencyPrice > 0 {
+	switch {
+	case pb.CurrencyPrice > 0:
 		return float64(pb.CurrencyPrice)
+	case pb.ProductPrice > 0:
+		return float64(pb.ProductPrice)
+	default:
+		return float64(pb.USDPrice)
 	}
-	return float64(pb.ProductPrice)
 }
 
 // FlashSale is a time-limited offer from third-party stock. LCSC sends it
@@ -204,12 +209,19 @@ func (f *FlashSale) Price() float64 {
 // DeliveryDays returns the minimum and the maximum delivery time in days.
 // ok is false when the offer has no delivery time.
 func (f *FlashSale) DeliveryDays() (minDays, maxDays int, ok bool) {
-	if f == nil || len(f.DeliveryTimeWayDays) == 0 {
+	if f == nil {
 		return 0, 0, false
 	}
-	minDays = f.DeliveryTimeWayDays[0]
-	maxDays = f.DeliveryTimeWayDays[len(f.DeliveryTimeWayDays)-1]
-	return minDays, maxDays, true
+	return deliveryDays(f.DeliveryTimeWayDays)
+}
+
+// deliveryDays returns the first and the last value of a
+// deliveryTimeWayDays list. ok is false when the list is empty.
+func deliveryDays(days []int) (minDays, maxDays int, ok bool) {
+	if len(days) == 0 {
+		return 0, 0, false
+	}
+	return days[0], days[len(days)-1], true
 }
 
 // Lifecycle is the lifecycle state of a product. [Product.Lifecycle] gets

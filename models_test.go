@@ -199,6 +199,10 @@ func TestPriceBreakPrice(t *testing.T) {
 		{"currency price", PriceBreak{ProductPrice: 0.9975, USDPrice: 0.9975, CurrencyPrice: 6.9227}, 6.9227},
 		{"no currency price", PriceBreak{ProductPrice: 0.9975}, 0.9975},
 		{"zero currency price", PriceBreak{ProductPrice: 0.5, CurrencyPrice: 0}, 0.5},
+		// Offer rows send currencyPrice and usdPrice, but no productPrice.
+		{"offer row", PriceBreak{USDPrice: 0.0017, CurrencyPrice: 0.0016}, 0.0016},
+		{"usd price only", PriceBreak{USDPrice: 1.1861}, 1.1861},
+		{"no price", PriceBreak{}, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
