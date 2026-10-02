@@ -324,7 +324,9 @@ func TestProductDetailsSuccess(t *testing.T) {
 	)
 	defer func() { _ = client.Close() }()
 
-	product, err := client.Product.Details(context.Background(), "C8734")
+	// LCSC finds no product for a lower-case code. The client sends the
+	// code in upper case.
+	product, err := client.Product.Details(context.Background(), " c8734 ")
 	if err != nil {
 		t.Fatalf("details failed: %v", err)
 	}

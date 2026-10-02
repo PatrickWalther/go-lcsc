@@ -45,8 +45,14 @@ type Parameter struct {
 
 	// ParamValueEnForSearch is the numeric value that LCSC uses for
 	// parametric search. LCSC uses base units (Ω, V, W, A, Hz), but
-	// capacitance is in pF: 100nF gives 100000. It is nil or -1 when the
-	// value is not a single number, for example "X7R" or "±10%".
+	// capacitance is in pF: 100nF gives 100000. It is nil or -1 for many
+	// values that are not a single number, for example "X7R" or
+	// "-55℃~+150℃".
+	//
+	// The value does not keep all of the text. LCSC removes a test
+	// condition and other text: "21mΩ@2.5V" and "21mΩ@10V" both give
+	// 0.021, and "100,000 cycles" gives 10. Use it only for a value that
+	// is one number with a unit (see [DiffParameters]).
 	ParamValueEnForSearch *float64 `json:"paramValueEnForSearch"`
 
 	// IsMain is true for the key parameters of the product. LCSC sends
@@ -229,16 +235,17 @@ func deliveryDays(days []int) (minDays, maxDays int, ok bool) {
 type Lifecycle string
 
 const (
-	// LifecycleUnknown means that the record has no lifecycle data.
+	// LifecycleUnknown means that the record has no lifecycle data, or
+	// that the lifecycle data has a form that was not observed.
 	LifecycleUnknown Lifecycle = "unknown"
 
 	// LifecycleActive means that LCSC sells the product as a normal
-	// product (productCycle "normal").
+	// product (productCycle "normal" or "on_sale").
 	LifecycleActive Lifecycle = "active"
 
 	// LifecycleNotRecommended means that LCSC sells only the remaining
-	// stock, for example for productCycle "sold_out". The LCSC site shows
-	// "Not recommended for new".
+	// stock (isNotOverstock), for example for productCycle "sold_out". The
+	// LCSC site shows "Not recommended for new".
 	LifecycleNotRecommended Lifecycle = "not_recommended"
 
 	// LifecycleDiscontinued means that the product is discontinued
@@ -248,6 +255,7 @@ const (
 
 const (
 	productCycleNormal  = "normal"
+	productCycleOnSale  = "on_sale"
 	productCycleStopped = "stop_product"
 )
 
@@ -331,7 +339,9 @@ type Product struct {
 	ProductImageURLBig string `json:"productImageUrlBig"`
 
 	// IsNotOverstock is true when LCSC refuses an order quantity above
-	// StockNumber. LCSC sets it exactly when ProductCycle is not "normal".
+	// StockNumber. In the observed data, LCSC sets it exactly when
+	// ProductCycle is not "normal". The LCSC site shows the "Discontinued"
+	// or the "Not recommended for new" label only when it is true.
 	IsNotOverstock bool `json:"isNotOverstock"`
 
 	// IsForeignOnsale is false when LCSC does not sell the product to
@@ -475,15 +485,19 @@ func (p *Product) Currency() string {
 	return defaultCurrency
 }
 
-// Lifecycle returns the lifecycle state of the product:
+// Lifecycle returns the lifecycle state of the product. The rules follow
+// the labels of the LCSC site:
 //
 //   - [LifecycleDiscontinued] when ProductCycle is "stop_product".
-//   - [LifecycleNotRecommended] when ProductCycle has a value other than
-//     "normal", or when ProductCycle is empty and IsNotOverstock is true.
-//   - [LifecycleActive] when ProductCycle is "normal". Also when
-//     ProductCycle is empty but the record has other lifecycle data
+//   - [LifecycleNotRecommended] when IsNotOverstock is true and
+//     ProductCycle is not "stop_product".
+//   - [LifecycleActive] when ProductCycle is "normal" or "on_sale". Also
+//     when ProductCycle is empty but the record has other lifecycle data
 //     (IsForeignOnsale is set).
-//   - [LifecycleUnknown] when the record has no lifecycle data.
+//   - [LifecycleUnknown] when the record has no lifecycle data. Also for
+//     a ProductCycle other than the values above when IsNotOverstock is
+//     false. The LCSC site shows no label for such a product, but the
+//     observed data has no such record.
 func (p *Product) Lifecycle() Lifecycle {
 	if p == nil {
 		return LifecycleUnknown
@@ -492,15 +506,15 @@ func (p *Product) Lifecycle() Lifecycle {
 	switch {
 	case cycle == productCycleStopped:
 		return LifecycleDiscontinued
-	case cycle != "" && cycle != productCycleNormal:
+	case p.IsNotOverstock:
+		// The LCSC site shows "Not recommended for new" when
+		// isNotOverstock is true and the cycle is not "stop_product".
 		return LifecycleNotRecommended
-	case cycle == "" && p.IsNotOverstock:
-		// LCSC sets isNotOverstock exactly when productCycle is not
-		// "normal".
-		return LifecycleNotRecommended
-	case cycle == productCycleNormal:
+	case cycle == productCycleNormal || cycle == productCycleOnSale:
+		// The LCSC web client treats "normal" and "on_sale" as normal
+		// cycles.
 		return LifecycleActive
-	case p.IsForeignOnsale != nil:
+	case cycle == "" && p.IsForeignOnsale != nil:
 		// The record has lifecycle fields, but no cycle.
 		return LifecycleActive
 	default:

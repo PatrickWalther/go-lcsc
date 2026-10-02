@@ -21,8 +21,12 @@ const (
 	maxListPageSize = 100
 
 	// maxListRows is the number of rows that LCSC returns at most for one
-	// filter. LCSC answers a page after the 5000th row with envelope code
-	// 405.
+	// filter. LCSC answers a page that ends after row 5000 with envelope
+	// code 405 "Product search error.", also when the page starts before
+	// row 5000 and totalPage includes the page. For example, page 167 at
+	// page size 30 (rows 4981-5010) gives 405. Thus a page size that does
+	// not divide 5000 cannot read the last rows. Use a page size that
+	// divides 5000, for example 25, 50 or 100, to read them.
 	maxListRows = 5000
 
 	// sceneFullMatch is the scene that the client sends with a global
@@ -113,10 +117,10 @@ type ListResponse struct {
 	// (totalRow). LCSC caps it at 5000.
 	TotalCount int
 
-	// ActualTotal is the real number of matching products
+	// ActualTotalCount is the real number of matching products
 	// (actualTotalRow). It is TotalCount when the response does not send
 	// actualTotalRow.
-	ActualTotal int
+	ActualTotalCount int
 
 	// Page is the page number of Products.
 	Page int
@@ -183,7 +187,10 @@ func (w *productListWrapper) actualTotal() int {
 // cases:
 //
 //   - PageSize is above 100 or negative, or Page is negative.
-//   - Page × PageSize is above 5000. LCSC returns at most 5000 rows.
+//   - Page × PageSize is above 5000. LCSC returns at most 5000 rows. It
+//     answers a page that ends after row 5000 with code 405, also when
+//     the page starts before row 5000. To read the last rows, use a page
+//     size that divides 5000.
 //   - GlobalKeyword is set and CatalogIDs is empty.
 //   - A category id or a brand id is not positive.
 //
@@ -230,12 +237,12 @@ func (s *SearchService) List(ctx context.Context, req *ListRequest) (*ListRespon
 	}
 
 	resp := &ListResponse{
-		Products:    list.DataList,
-		TotalCount:  list.TotalRow,
-		ActualTotal: list.actualTotal(),
-		Page:        page,
-		PageSize:    pageSize,
-		CatalogIDs:  body.CatalogIDList,
+		Products:         list.DataList,
+		TotalCount:       list.TotalRow,
+		ActualTotalCount: list.actualTotal(),
+		Page:             page,
+		PageSize:         pageSize,
+		CatalogIDs:       body.CatalogIDList,
 	}
 
 	if useCache {

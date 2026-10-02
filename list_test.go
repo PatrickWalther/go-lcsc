@@ -66,8 +66,8 @@ func TestSearchListDecodesFixture(t *testing.T) {
 	if got, want := productCodes(resp.Products), []string{"C98220", "C2906982", "C2930027"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("expected products %v, got %v", want, got)
 	}
-	if resp.TotalCount != 181 || resp.ActualTotal != 181 {
-		t.Fatalf("expected counts 181 and 181, got %d and %d", resp.TotalCount, resp.ActualTotal)
+	if resp.TotalCount != 181 || resp.ActualTotalCount != 181 {
+		t.Fatalf("expected counts 181 and 181, got %d and %d", resp.TotalCount, resp.ActualTotalCount)
 	}
 	if resp.Page != 1 || resp.PageSize != 50 {
 		t.Fatalf("expected page 1 with size 50, got %d with size %d", resp.Page, resp.PageSize)
@@ -301,8 +301,8 @@ func TestSearchListActualTotal(t *testing.T) {
 			if err != nil {
 				t.Fatalf("list failed: %v", err)
 			}
-			if resp.TotalCount != tt.wantTotal || resp.ActualTotal != tt.wantActual {
-				t.Fatalf("expected counts %d and %d, got %d and %d", tt.wantTotal, tt.wantActual, resp.TotalCount, resp.ActualTotal)
+			if resp.TotalCount != tt.wantTotal || resp.ActualTotalCount != tt.wantActual {
+				t.Fatalf("expected counts %d and %d, got %d and %d", tt.wantTotal, tt.wantActual, resp.TotalCount, resp.ActualTotalCount)
 			}
 		})
 	}
@@ -352,8 +352,8 @@ func TestSearchListIsCached(t *testing.T) {
 		if err != nil {
 			t.Fatalf("list failed: %v", err)
 		}
-		if len(resp.Products) != 3 || resp.ActualTotal != 181 {
-			t.Fatalf("unexpected response: %d products, actual total %d", len(resp.Products), resp.ActualTotal)
+		if len(resp.Products) != 3 || resp.ActualTotalCount != 181 {
+			t.Fatalf("unexpected response: %d products, actual total %d", len(resp.Products), resp.ActualTotalCount)
 		}
 	}
 	if got := atomic.LoadInt32(&calls); got != 1 {

@@ -167,7 +167,7 @@ func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*Searc
 		}
 		resp.Products = list.Products
 		resp.TotalCount = list.TotalCount
-		resp.ActualTotalCount = list.ActualTotal
+		resp.ActualTotalCount = list.ActualTotalCount
 	case allowsFallback(resp.QueryTypes, resp.DirectMatchCode):
 		products, total, actualTotal, err := s.fallbackProducts(ctx, keyword, resp.DirectMatchCode)
 		if err != nil {
@@ -288,7 +288,11 @@ func normalizeSearchText(s string) string {
 	return b.String()
 }
 
+// cacheKeyForSearch makes the cache key of [SearchService.Keyword]. The key
+// keeps the case of the keyword, because a parameter query can use the
+// case of an SI prefix: "1m 0603" (milli) and "1M 0603" (mega) are
+// different queries.
 func cacheKeyForSearch(currency, keyword string) string {
-	hash := sha256.Sum256([]byte(strings.ToUpper(strings.TrimSpace(keyword))))
+	hash := sha256.Sum256([]byte(strings.TrimSpace(keyword)))
 	return fmt.Sprintf("search:%s:%s", strings.ToUpper(currency), hex.EncodeToString(hash[:8]))
 }

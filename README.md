@@ -146,7 +146,7 @@ if err != nil {
 	// handle error
 }
 
-fmt.Println(resp.Route.Scene, resp.CatalogIDs, resp.ActualTotal)
+fmt.Println(resp.Route.Scene, resp.CatalogIDs, resp.ActualTotalCount)
 for _, p := range resp.Products {
 	fmt.Println(p.ProductCode, p.ProductModel, p.StockNumber)
 }
@@ -176,6 +176,8 @@ for _, p := range resp.Products {
 
 `Route.LeafCatalogIDs(n)` returns up to `n` leaf category ids from `TopResults`. `Route.IsParametric()` reports a parameter or package classification.
 
+The cache keys of `Keyword` and `Route` keep the case of the keyword, because the case of an SI prefix changes a parameter query: `1m 0603` is milli and `1M 0603` is mega. `Route.Keyword` is always the keyword of the request.
+
 `client.Search.Similar(ctx, code, opts)` finds products like a given product. It gets the product details. Then it calls `List` with the category, the package and the key parameters (`IsMain`) of the product. `SimilarOptions.Relax` removes parameters from the filter, and `SimilarOptions.AnyPackage` removes the package. A filter with all key parameters can be too narrow, so relax one parameter at a time. The result can include the product itself. `Product.SimilarFilter(relax...)` gives the same filter for a product that you already have.
 
 ### List and Facets
@@ -198,7 +200,7 @@ if err != nil {
 	// handle error
 }
 
-fmt.Println(resp.TotalCount, resp.ActualTotal)
+fmt.Println(resp.TotalCount, resp.ActualTotalCount)
 ```
 
 Filter fields:
@@ -219,13 +221,13 @@ Request rules:
 - `Page` starts at 1. `PageSize` is from 1 to 100. The client sends 25 when `PageSize` is 0.
 - The client returns `ErrInvalidRequest` and does not send the request in these cases:
   - `PageSize` is above 100.
-  - `Page × PageSize` is above 5000. LCSC returns at most 5000 rows.
+  - `Page × PageSize` is above 5000. LCSC returns at most 5000 rows. It answers a page that ends after row 5000 with code 405, also when the page starts before row 5000. For example, page 167 at page size 30 (rows 4981 to 5010) gives 405. To read the last rows, use a page size that divides 5000, for example 25, 50 or 100.
   - `GlobalKeyword` is set and `CatalogIDs` is empty.
   - A category id or a brand id is not positive.
 - LCSC answers the first three cases with code 405.
 - `Sort` is `SortStock` or `SortPrice`. `Desc` sets the descending order. The price sort uses the price of the largest quantity break. The stock sort is approximate.
 
-`TotalCount` is the `totalRow` value, which LCSC caps at 5000. `ActualTotal` is the `actualTotalRow` value, which is the real count.
+`TotalCount` is the `totalRow` value, which LCSC caps at 5000. `ActualTotalCount` is the `actualTotalRow` value, which is the real count. `SearchResponse` and `AlternatesResponse` use the same two names with the same rule.
 
 `client.Search.Facets` sends the same filter to `/product/query/param/group`. It returns the values that exist for the filter: `TotalCount`, `Packages`, `Manufacturers` (with ids), `Packagings`, and `Params` in the order of the LCSC site. For a dimension that the filter uses, LCSC sends only the selected values.
 
@@ -329,7 +331,7 @@ Product fields:
 | `ParentCatalogList` | `parentCatalogList` | Parent categories, from the root category down. Only detail responses send it. |
 | `FirstWmCatalogID` to `SixthWmCatalogID`, with the `...NameEn` fields | `firstWmCatalogId` to `sixthWmCatalogId` | Category path of a list row, from the root category down. Only list rows send it. |
 | `ProductImageURLBig` | `productImageUrlBig` | 900x900 image. Detail responses do not send it. |
-| `IsNotOverstock` | `isNotOverstock` | `true` when LCSC refuses an order quantity above `StockNumber`. |
+| `IsNotOverstock` | `isNotOverstock` | `true` when LCSC refuses an order quantity above `StockNumber`. In the observed data, it is `true` exactly when `ProductCycle` is not `normal`. |
 | `IsForeignOnsale` | `isForeignOnsale` | `false` when LCSC does not sell the product to overseas customers. `nil` when the response does not send it. |
 | `HasThirdPartyStock` | `hasThirdPartyStock` | `true` when marketplace offers exist. Only list rows send a correct value. |
 | `HasAlternatePart` | `hasAlternatePart` | `true` when LCSC has cross-reference alternates. Only list rows send it. |
@@ -354,14 +356,21 @@ Product methods:
 | `SimilarFilter(relax...)` | Filter for products like this product. See [Parametric Search](#parametric-search). |
 | `ImageURL(size)` | First product image at the size `ImageSizeSmall`, `ImageSizeMedium` or `ImageSizeLarge`. See [Media Helpers](#media-helpers). |
 
-`Lifecycle` gives `LifecycleDiscontinued` for `stop_product`. It gives `LifecycleNotRecommended` for other cycles that are not `normal`. It gives `LifecycleActive` for `normal`, and also for an empty cycle when the record has other lifecycle fields. It gives `LifecycleUnknown` when the record has no lifecycle data.
+`Lifecycle` follows the labels of the LCSC site:
+
+- `LifecycleDiscontinued` for `stop_product`.
+- `LifecycleNotRecommended` when `IsNotOverstock` is `true` and the cycle is not `stop_product`, for example for `sold_out`.
+- `LifecycleActive` for `normal` and `on_sale`, and also for an empty cycle when the record has other lifecycle fields.
+- `LifecycleUnknown` when the record has no lifecycle data. Also for another cycle when `IsNotOverstock` is `false`. The LCSC site shows no label for such a product, but the observed data has no such record.
+
+`Details` changes the product code to upper case, because LCSC finds no product for a lower-case code.
 
 Parameter fields:
 
 | Field | JSON | Description |
 |---|---|---|
 | `ParamCode` | `paramCode` | LCSC identifier of the parameter, for example `param_10951_n`. |
-| `ParamValueEnForSearch` | `paramValueEnForSearch` | Numeric value that LCSC uses for parametric search. It uses base units, but capacitance is in pF (100nF gives `100000`). It is `nil` or `-1` when the value is not a single number. |
+| `ParamValueEnForSearch` | `paramValueEnForSearch` | Numeric value that LCSC uses for parametric search. It uses base units, but capacitance is in pF (100nF gives `100000`). It is `nil` or `-1` for many values that are not a single number. LCSC removes a test condition and other text from it: `21mΩ@2.5V` and `21mΩ@10V` both give `0.021`, and `100,000 cycles` gives `10`. Use it only for a value that is one number with a unit. |
 | `IsMain` | `isMain` | `true` for the key parameters. A JSON null gives `false`. |
 
 ### Prices and Currency
@@ -435,7 +444,8 @@ Response fields:
 | `Original` | The product that the request names (`rawMaterial`). |
 | `Alternates` | The alternates on the page, in the server order. Each alternate is a full `Product` with a `MatchType`. |
 | `InStockCount` | Number of alternates with LCSC retail stock. `InStockOnly` does not change it. |
-| `TotalCount` | Number of alternates on all pages: `actualTotalRow`, else `totalRow`. |
+| `TotalCount` | Number of alternates on all pages (`totalRow`). |
+| `ActualTotalCount` | Real number of alternates (`actualTotalRow`), else `TotalCount`. For the products that were checked, both counts had the same value. |
 
 The server order is not always grouped by match type. Sort the list when the order is important. `List` returns `ErrNotFound` when LCSC does not know the product code. A known product with no alternates gives an empty `Alternates` list and no error. The client caches the response for `CacheConfig.SearchTTL`.
 
@@ -457,7 +467,7 @@ The labels come from the LCSC web client. LCSC does not document the codes.
 - `ParameterMissing`: only the original product has a value.
 - `ParameterAdded`: only the alternate has a value.
 
-`DiffParameters` matches parameters on `ParamCode` first. Then it matches the remaining parameters on the name, and ignores case, spaces and punctuation in the name. LCSC uses different codes for the same parameter in some categories. Two values are equal when the text is equal without spaces, or when both have the same numeric `ParamValueEnForSearch`. The value comparison does not ignore case, because `1mΩ` and `1MΩ` are different. An empty value and `-` count as no value. `DiffParameters` does not compare the package (`EncapStandard`).
+`DiffParameters` matches parameters on `ParamCode` first. Then it matches the remaining parameters on the name, and ignores case, spaces and punctuation in the name. LCSC uses different codes for the same parameter in some categories. Two values are equal when the text is equal without spaces. The value comparison does not ignore case, because `1mΩ` and `1MΩ` are different. Two values are also equal when both have the same numeric `ParamValueEnForSearch`, for example `100nF` and `0.1µF`. `DiffParameters` uses this rule only when both texts are one number with an optional unit, and when both units are the same unit with an optional SI prefix. LCSC removes the test condition from the search value, so `21mΩ@2.5V` and `21mΩ@10V` are different values, although both have the search value `0.021`. An empty value and `-` count as no value. `DiffParameters` does not compare the package (`EncapStandard`).
 
 ### Third Party Service
 
@@ -506,7 +516,7 @@ Offer fields:
 | `ProductPriceList` | `productPriceList` | Price ladder with `CurrencyPrice` and `USDPrice`, but no `ProductPrice`. Use `PriceBreak.Price()` and `Offer.Currency()`. |
 | `BatchCode` | `batchNumberEn` | Date code of the lot, for example `26+` or `2551`. |
 | `IsOnsale` | `isOnsale` | `true` when the offer is open. |
-| `IsPriceFirst`, `IsStockFirst`, `IsDeliveryTimeFirst` | same names | Badges for the best price, the most stock and the shortest delivery time. The meaning comes from the names and the data (inferred). |
+| `IsPriceFirst`, `IsStockFirst`, `IsDeliveryTimeFirst` | same names | Badges for the best price, the most stock and the shortest delivery time. The meaning comes from the names and the data (inferred). LCSC sets the badges only for a `ProductCode` request. For a `Keyword` request, all offers have `false`. |
 
 Offer rows send no `currencyType`, so `Offer.Currency()` gets the currency code from the price symbol. The offers are information only. JLCPCB pre-orders do not use them (inferred).
 
@@ -540,7 +550,7 @@ thumb := product.ImageURL(lcsc.ImageSizeMedium) // first product image at 224x22
 | Input form | Example | Result | Requests |
 |---|---|---|---|
 | Direct file | `https://datasheet.lcsc.com/datasheet/pdf/{hash}.pdf?productCode=C1525` (`Product.PdfURL`) | The same URL | 0 |
-| Legacy file | `https://datasheet.lcsc.com/lcsc/{file}.pdf` | `https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/{file}.pdf` | 0 |
+| Legacy file | `https://datasheet.lcsc.com/lcsc/{file}.pdf` or `https://datasheet.lcsc.com/szlcsc/{file}.pdf` | `https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/{file}.pdf` | 0 |
 | Viewer page | `https://www.lcsc.com/datasheet/C1525.pdf`, or the JLCPCB form `https://www.lcsc.com/datasheet/lcsc_datasheet_{file}.pdf` | The `previewPdfUrl` of the page (a direct file URL) | 1 |
 | Other http or https URL | `https://www.ti.com/lit/ds/symlink/lm358.pdf` | The same URL | 0 |
 
@@ -552,7 +562,7 @@ if err != nil {
 fmt.Println(pdfURL) // https://datasheet.lcsc.com/datasheet/pdf/....pdf?productCode=C1525
 ```
 
-- The viewer page is HTML, although its name ends with `.pdf`. The legacy form sends a redirect to the viewer page.
+- The viewer page is HTML, although its name ends with `.pdf`. The legacy forms send a redirect to the viewer page. The `/szlcsc/` form first sends a redirect to the `/lcsc/` form.
 - The client follows a redirect only to another viewer page or to a PDF file on an LCSC host. For an unknown product, LCSC sends a redirect to the home page. `ResolveDatasheetURL` then returns `ErrNotFound`.
 - An empty value, or a value that is not an absolute http or https URL, gives `ErrInvalidRequest`. For example, JLCPCB sends `--` for a part with no datasheet.
 - The viewer request uses the rate limiter and the retry rules of the client. The client caches the result for 24 hours.
@@ -603,7 +613,9 @@ defer client.Close()
 
 The client retries transport failures, HTTP 429 and HTTP 5xx up to `MaxRetries` times. LCSC also sends error codes in the response envelope with HTTP status 200. The client retries an envelope 429 up to `MaxRetries` times, but an envelope 5xx only one time. It does not retry an envelope 405.
 
-When a response has a `Retry-After` header (seconds or an HTTP date), the client waits at least that time before the next attempt. When that time is longer than `MaxBackoff`, or when the context ends before that time, the client does not retry. It returns the error, and `APIError.RetryAfter` holds the time.
+When a retryable response has a `Retry-After` header (seconds or an HTTP date), the client waits at least that time before the next attempt. This applies to every retryable status, also to HTTP 5xx. When that time is longer than `MaxBackoff`, the client does not retry. It returns the error, and `APIError.RetryAfter` holds the time.
+
+When the wait before the next attempt (the backoff or the `Retry-After` time) ends after the context deadline, the client does not wait. It returns the last error, for example an error that matches `ErrServer`, and not `context.DeadlineExceeded`.
 
 ## Error Handling
 
@@ -639,7 +651,7 @@ if err != nil {
   - An unknown parameter name or value in `Filter.Params` gives 0 rows. Treat 0 rows with a parameter filter as a sign to check the facet names.
   - A parent category id in `Filter.CatalogIDs` gives 0 rows.
   - An unknown product code gives an empty offer list, and `HasStock` gives `false`.
-- **5000-row cap.** `/product/query/list` returns at most 5000 rows for one filter, and its `totalRow` value stops at 5000. `List` refuses a page after row 5000. Use `ActualTotal` or `ActualTotalCount` for the real count. Narrow the filter to get other rows.
+- **5000-row cap.** `/product/query/list` returns at most 5000 rows for one filter, and its `totalRow` value stops at 5000. LCSC answers a page that ends after row 5000 with code 405, also when `totalPage` includes that page. `List` refuses such a page and does not send the request. To read the last rows, use a page size that divides 5000. Use `ActualTotalCount` for the real count. Narrow the filter to get other rows.
 - **Request protection.** The LCSC web client encrypts the search keyword of `/search/v3/global` with SM2. Each LCSC response also sends a key pair in the `x_web_cipher_pairs` header. These are anti-scraping controls. This library sends the keyword as plain text, which LCSC accepts today. Do not reproduce the SM2 keyword encryption in this library or in your code. If LCSC stops accepting the plain keyword, use `List` with `Filter.Keyword`.
 - **Rate limits.** LCSC does not publish rate limits. The default client sends at most 5 requests per second. Keep interactive use at 1 to 2 requests per second, and bulk jobs lower. The client honors `Retry-After` (see [Retry Controls](#retry-controls)).
 - **Inferred rules.** Some rules come from live data and from the LCSC web client, not from documentation. Examples are `Product.AllowsBackorder()`, `MatchType.IsDropIn()`, the offer badges and some page size limits. The Go doc comments mark these rules as inferred.
@@ -654,12 +666,13 @@ All API changes are additive. Existing code compiles without changes.
 - New `Product` fields: `ProductID`, `CurrencyType`, `BrandID`, `WmCatalogID`, `ProductImageURLBig`, `IsNotOverstock`, `IsForeignOnsale`, `HasThirdPartyStock`, `HasAlternatePart`, `MaxBuyNumber`, `IsReel`, `ReelPrice`, `ProductArrange`, `StockSz`, `StockJs`, `WmStockHk`, `Eccn` and `FlashSale`.
 - New `Lifecycle` type with `Product.Lifecycle()`, and new method `Product.AllowsBackorder()`.
 - New `FlashSale` type with the methods `Price()` and `DeliveryDays()`.
-- New `SearchResponse.ActualTotalCount` field.
+- New `SearchResponse.ActualTotalCount` field. `ListResponse` and `AlternatesResponse` use the same name for the real count.
 - New `APIError.RetryAfter` field.
 - `FlexFloat64` decodes an empty string as 0. Before, it returned an error.
 - Envelope code 405 matches `ErrInvalidRequest`.
 - The client retries an envelope 5xx only one time. Before, it retried up to `MaxRetries` times.
-- The client honors `Retry-After` for HTTP 429 and envelope 429.
+- The client honors `Retry-After` for every retryable response, also for HTTP 5xx.
+- When the wait before the next attempt ends after the context deadline, the client returns the last API error at once. Before, it waited until the deadline and returned the context error.
 - New `client.Alternates` service (`AlternateService`) with `List()`, and the types `AlternatesRequest` and `AlternatesResponse`.
 - New `MatchType` type with the methods `Label()` and `IsDropIn()`, the constants `MatchTypeAltPackaging`, `MatchTypeDirect` and `MatchTypeUpgrade`, and the new method `Product.Match()`. The field `Product.MatchType` keeps the type `FlexString`.
 - New `DiffParameters()` function with the types `ParameterDiff` and `ParameterDiffKind`.
@@ -670,6 +683,8 @@ All API changes are additive. Existing code compiles without changes.
 - New `client.ThirdParty` service (`ThirdPartyService`) with `Offers()` and `HasStock()`, and the types `OffersRequest`, `OffersResponse` and `Offer`.
 - New `ImageSize` type with the constants `ImageSizeSmall`, `ImageSizeMedium` and `ImageSizeLarge`, the new function `ImageURLAtSize()` and the new method `Product.ImageURL()`.
 - New method `ProductService.ResolveDatasheetURL()`. It changes a legacy or viewer datasheet URL to a URL that sends the PDF file.
+- `Product.Details` changes the product code to upper case. Before, a lower-case code gave `ErrNotFound`.
+- The cache key of `Search.Keyword` keeps the case of the keyword. Before, keywords that differ only in case shared one cache entry.
 
 ## Changes In v1.1.0
 

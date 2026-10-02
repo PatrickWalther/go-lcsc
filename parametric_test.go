@@ -126,8 +126,10 @@ func TestSearchRouteValidationAndCache(t *testing.T) {
 	v3 := mustReadFixture(t, "search_v3_parametric_10k_0603.json")
 
 	var calls int32
+	var bodies []string
 	client := newCachedTestClient(newRecordingCache(), func(req *http.Request) (*http.Response, error) {
 		atomic.AddInt32(&calls, 1)
+		bodies = append(bodies, mustReadBody(t, req))
 		return jsonResponse(http.StatusOK, v3), nil
 	})
 	defer func() { _ = client.Close() }()
@@ -136,19 +138,36 @@ func TestSearchRouteValidationAndCache(t *testing.T) {
 	if _, err := client.Search.Route(ctx, "  "); !errors.Is(err, ErrInvalidRequest) {
 		t.Fatalf("expected ErrInvalidRequest for an empty keyword, got %v", err)
 	}
-	first, err := client.Search.Route(ctx, "10k 0603")
+	first, err := client.Search.Route(ctx, "1m 0603")
 	if err != nil {
 		t.Fatalf("route failed: %v", err)
 	}
-	second, err := client.Search.Route(ctx, "10K 0603")
+	second, err := client.Search.Route(ctx, " 1m 0603 ")
 	if err != nil {
 		t.Fatalf("route failed: %v", err)
 	}
 	if got := atomic.LoadInt32(&calls); got != 1 {
 		t.Fatalf("expected one request, got %d", got)
 	}
-	if !reflect.DeepEqual(first.TopResults, second.TopResults) || second.Scene != SceneFullMatch {
+	if !reflect.DeepEqual(first.TopResults, second.TopResults) || second.Scene != SceneFullMatch || second.Keyword != "1m 0603" {
 		t.Fatalf("expected the cached route, got %+v", second)
+	}
+
+	// The case of an SI prefix changes the query: "1M" is mega and "1m" is
+	// milli. The cache must not give the route of the other keyword.
+	third, err := client.Search.Route(ctx, "1M 0603")
+	if err != nil {
+		t.Fatalf("route failed: %v", err)
+	}
+	if got := atomic.LoadInt32(&calls); got != 2 {
+		t.Fatalf("expected a second request for a keyword with a different case, got %d requests", got)
+	}
+	if third.Keyword != "1M 0603" {
+		t.Fatalf("expected the keyword of the request, got %q", third.Keyword)
+	}
+	want := []string{`{"keyword":"1m 0603"}`, `{"keyword":"1M 0603"}`}
+	if !reflect.DeepEqual(bodies, want) {
+		t.Fatalf("expected bodies %v, got %v", want, bodies)
 	}
 }
 
@@ -224,8 +243,8 @@ func TestSearchParametricFullMatchUsesList(t *testing.T) {
 			if want := []string{testSearchV3Path, testQueryListPath}; !reflect.DeepEqual(paths, want) {
 				t.Fatalf("expected requests %v, got %v", want, paths)
 			}
-			if len(resp.Products) != 3 || resp.TotalCount != 181 || resp.ActualTotal != 181 {
-				t.Fatalf("unexpected response: %d products, counts %d and %d", len(resp.Products), resp.TotalCount, resp.ActualTotal)
+			if len(resp.Products) != 3 || resp.TotalCount != 181 || resp.ActualTotalCount != 181 {
+				t.Fatalf("unexpected response: %d products, counts %d and %d", len(resp.Products), resp.TotalCount, resp.ActualTotalCount)
 			}
 			if resp.Route == nil || resp.Route.Scene != SceneFullMatch || len(resp.CatalogIDs) != len(tt.wantIDs) {
 				t.Fatalf("expected the route and the catalog ids in the response, got route %v and ids %v", resp.Route, resp.CatalogIDs)
@@ -267,7 +286,7 @@ func TestSearchParametricRedirectUsesDetails(t *testing.T) {
 	if got := productCodes(resp.Products); !reflect.DeepEqual(got, []string{"C25744"}) {
 		t.Fatalf("expected [C25744], got %v", got)
 	}
-	if resp.TotalCount != 1 || resp.ActualTotal != 1 || resp.Route.RedirectCode != "C25744" {
+	if resp.TotalCount != 1 || resp.ActualTotalCount != 1 || resp.Route.RedirectCode != "C25744" {
 		t.Fatalf("unexpected response: %+v", resp)
 	}
 
@@ -317,7 +336,7 @@ func TestSearchParametricModelUsesExactMatches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parametric failed: %v", err)
 	}
-	if len(resp.Products) != 3 || resp.TotalCount != 3 || resp.ActualTotal != 3 {
+	if len(resp.Products) != 3 || resp.TotalCount != 3 || resp.ActualTotalCount != 3 {
 		t.Fatalf("expected the 3 exact matches, got %v (total %d)", productCodes(resp.Products), resp.TotalCount)
 	}
 
@@ -392,7 +411,7 @@ func TestSearchParametricPartialMatch(t *testing.T) {
 	if got, want := productCodes(resp.Products), []string{"C2765186", "C3151749"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("expected %v, got %v", want, got)
 	}
-	if resp.TotalCount != 57986 || resp.ActualTotal != 57986 || resp.Page != 1 || resp.PageSize != 25 {
+	if resp.TotalCount != 57986 || resp.ActualTotalCount != 57986 || resp.Page != 1 || resp.PageSize != 25 {
 		t.Fatalf("unexpected counts or page: %+v", resp)
 	}
 
@@ -562,6 +581,10 @@ func TestSearchSimilar(t *testing.T) {
 	client := newSearchTestClient(func(req *http.Request) (*http.Response, error) {
 		switch req.URL.Path {
 		case testDetailPath:
+			// LCSC finds no product for a lower-case code.
+			if got := req.URL.Query().Get("productCode"); got != "C25744" {
+				t.Errorf("expected productCode C25744, got %q", got)
+			}
 			return jsonResponse(http.StatusOK, detail), nil
 		case testQueryListPath:
 			bodies = append(bodies, decodeJSONBody(t, req))
@@ -574,15 +597,15 @@ func TestSearchSimilar(t *testing.T) {
 	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
-	resp, err := client.Search.Similar(ctx, "C25744", &SimilarOptions{Sort: SortStock, Desc: true, PageSize: 50})
+	resp, err := client.Search.Similar(ctx, " c25744 ", &SimilarOptions{Sort: SortStock, Desc: true, PageSize: 50})
 	if err != nil {
 		t.Fatalf("similar failed: %v", err)
 	}
 	if got, want := productCodes(resp.Products), []string{"C2906861", "C25744"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("expected %v, got %v", want, got)
 	}
-	if resp.ActualTotal != 32 {
-		t.Fatalf("expected actual total 32, got %d", resp.ActualTotal)
+	if resp.ActualTotalCount != 32 {
+		t.Fatalf("expected actual total 32, got %d", resp.ActualTotalCount)
 	}
 
 	// The body that gave the live response (report L2, similar search).

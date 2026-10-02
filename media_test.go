@@ -139,6 +139,10 @@ func TestResolveDatasheetURLWithoutRequest(t *testing.T) {
 		{"legacy URL with http", "http://DATASHEET.LCSC.COM/lcsc/1809212227_Changjiang-Electronics-Tech-CJ-DTC114YUA_C13490.pdf", "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/1809212227_Changjiang-Electronics-Tech-CJ-DTC114YUA_C13490.pdf"},
 		{"legacy URL with escaped name", "https://datasheet.lcsc.com/lcsc/a%20b.pdf", "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/a%20b.pdf"},
 		{"legacy folder only", "https://datasheet.lcsc.com/lcsc/", "https://datasheet.lcsc.com/lcsc/"},
+		// JLCPCB sends this form for some parts (C327414). It sends a
+		// redirect to the /lcsc/ form, which sends a redirect to the viewer.
+		{"old legacy URL", "https://datasheet.lcsc.com/szlcsc/1811141225_YAGEO-CC0402ZRY5V7BB104P_C327414.pdf", "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/1811141225_YAGEO-CC0402ZRY5V7BB104P_C327414.pdf"},
+		{"old legacy folder only", "https://datasheet.lcsc.com/szlcsc/", "https://datasheet.lcsc.com/szlcsc/"},
 		{"viewer folder only", "https://www.lcsc.com/datasheet/", "https://www.lcsc.com/datasheet/"},
 		{"product page", "https://www.lcsc.com/product-detail/C2040.html", "https://www.lcsc.com/product-detail/C2040.html"},
 		{"other host", "https://www.ti.com/lit/ds/symlink/lm358.pdf", "https://www.ti.com/lit/ds/symlink/lm358.pdf"},

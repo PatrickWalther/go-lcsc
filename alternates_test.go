@@ -77,8 +77,8 @@ func TestAlternatesListDecodesFixture(t *testing.T) {
 	if len(original.ParamVOList) != 4 {
 		t.Fatalf("expected 4 original parameters, got %d", len(original.ParamVOList))
 	}
-	if resp.InStockCount != 52 || resp.TotalCount != 99 {
-		t.Fatalf("unexpected counts: in stock %d, total %d", resp.InStockCount, resp.TotalCount)
+	if resp.InStockCount != 52 || resp.TotalCount != 99 || resp.ActualTotalCount != 99 {
+		t.Fatalf("unexpected counts: in stock %d, total %d, actual total %d", resp.InStockCount, resp.TotalCount, resp.ActualTotalCount)
 	}
 
 	wantAlternates := []struct {
@@ -198,14 +198,16 @@ func TestAlternatesListAcceptsMaxPageSize(t *testing.T) {
 
 func TestAlternatesListTotalCount(t *testing.T) {
 	tests := []struct {
-		name     string
-		pageInfo string
-		want     int
+		name       string
+		pageInfo   string
+		wantTotal  int
+		wantActual int
 	}{
-		{"actualTotalRow present", `{"totalRow":99,"actualTotalRow":99,"dataList":[]}`, 99},
-		{"actualTotalRow differs", `{"totalRow":50,"actualTotalRow":120,"dataList":[]}`, 120},
-		{"actualTotalRow missing", `{"totalRow":13,"dataList":[]}`, 13},
-		{"actualTotalRow null", `{"totalRow":13,"actualTotalRow":null,"dataList":[]}`, 13},
+		{"actualTotalRow present", `{"totalRow":99,"actualTotalRow":99,"dataList":[]}`, 99, 99},
+		{"actualTotalRow differs", `{"totalRow":50,"actualTotalRow":120,"dataList":[]}`, 50, 120},
+		{"actualTotalRow missing", `{"totalRow":13,"dataList":[]}`, 13, 13},
+		{"actualTotalRow null", `{"totalRow":13,"actualTotalRow":null,"dataList":[]}`, 13, 13},
+		{"actualTotalRow zero", `{"totalRow":0,"actualTotalRow":0,"dataList":[]}`, 0, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -217,8 +219,8 @@ func TestAlternatesListTotalCount(t *testing.T) {
 			if err != nil {
 				t.Fatalf("list failed: %v", err)
 			}
-			if resp.TotalCount != tt.want {
-				t.Fatalf("expected total count %d, got %d", tt.want, resp.TotalCount)
+			if resp.TotalCount != tt.wantTotal || resp.ActualTotalCount != tt.wantActual {
+				t.Fatalf("expected counts %d and %d, got %d and %d", tt.wantTotal, tt.wantActual, resp.TotalCount, resp.ActualTotalCount)
 			}
 		})
 	}
@@ -465,6 +467,50 @@ func TestDiffParametersRules(t *testing.T) {
 			alt:      []Parameter{{ParamCode: "param_10951_n", ParamNameEn: "Capacitance", ParamValueEn: "0.1µF", ParamValueEnForSearch: searchValue(100000)}},
 		},
 		{
+			name:     "equal numeric search values with a space before the unit",
+			original: []Parameter{{ParamCode: "p1", ParamNameEn: "Resistance", ParamValueEn: "1kΩ", ParamValueEnForSearch: searchValue(1000)}},
+			alt:      []Parameter{{ParamCode: "p1", ParamNameEn: "Resistance", ParamValueEn: "1000 Ω", ParamValueEnForSearch: searchValue(1000)}},
+		},
+		{
+			// Live rows C21713968 and C5224194 (list_keyword_AO3400A). LCSC
+			// gives both values the search value 0.021.
+			name:     "same search value with a different test condition",
+			original: []Parameter{{ParamCode: "param_14508_n", ParamNameEn: "RDS(on)", ParamValueEn: "21mΩ@2.5V", ParamValueEnForSearch: searchValue(0.021), IsMain: true}},
+			alt:      []Parameter{{ParamCode: "param_14508_n", ParamNameEn: "RDS(on)", ParamValueEn: "21mΩ@10V", ParamValueEnForSearch: searchValue(0.021), IsMain: true}},
+			want: []ParameterDiff{{Kind: ParameterChanged, Name: "RDS(on)", ParamCode: "param_14508_n",
+				OriginalValue: "21mΩ@2.5V", AlternateValue: "21mΩ@10V", IsMain: true}},
+		},
+		{
+			name:     "same search value with a different test current",
+			original: []Parameter{{ParamCode: "p1", ParamNameEn: "Vf@If", ParamValueEn: "1.25V@200mA", ParamValueEnForSearch: searchValue(1.25)}},
+			alt:      []Parameter{{ParamCode: "p1", ParamNameEn: "Vf@If", ParamValueEn: "1.25V@1A", ParamValueEnForSearch: searchValue(1.25)}},
+			want: []ParameterDiff{{Kind: ParameterChanged, Name: "Vf@If", ParamCode: "p1",
+				OriginalValue: "1.25V@200mA", AlternateValue: "1.25V@1A"}},
+		},
+		{
+			name:     "condition on one side only",
+			original: []Parameter{{ParamCode: "p1", ParamNameEn: "Noise", ParamValueEn: "40nV/√Hz", ParamValueEnForSearch: searchValue(40)}},
+			alt:      []Parameter{{ParamCode: "p1", ParamNameEn: "Noise", ParamValueEn: "40nV/√Hz@1kHz", ParamValueEnForSearch: searchValue(40)}},
+			want: []ParameterDiff{{Kind: ParameterChanged, Name: "Noise", ParamCode: "p1",
+				OriginalValue: "40nV/√Hz", AlternateValue: "40nV/√Hz@1kHz"}},
+		},
+		{
+			// Live row in b05_lcsc_query_list_space5: "100,000 cycles" has
+			// the search value 10.
+			name:     "lossy search value of a number with a separator",
+			original: []Parameter{{ParamCode: "param_31768_n", ParamNameEn: "Program / Erase Cycles", ParamValueEn: "100,000 cycles", ParamValueEnForSearch: searchValue(10)}},
+			alt:      []Parameter{{ParamCode: "param_31768_n", ParamNameEn: "Program / Erase Cycles", ParamValueEn: "10 cycles", ParamValueEnForSearch: searchValue(10)}},
+			want: []ParameterDiff{{Kind: ParameterChanged, Name: "Program / Erase Cycles", ParamCode: "param_31768_n",
+				OriginalValue: "100,000 cycles", AlternateValue: "10 cycles"}},
+		},
+		{
+			name:     "same search value with a different unit",
+			original: []Parameter{{ParamCode: "p1", ParamNameEn: "Rating", ParamValueEn: "10V", ParamValueEnForSearch: searchValue(10)}},
+			alt:      []Parameter{{ParamCode: "p1", ParamNameEn: "Rating", ParamValueEn: "10A", ParamValueEnForSearch: searchValue(10)}},
+			want: []ParameterDiff{{Kind: ParameterChanged, Name: "Rating", ParamCode: "p1",
+				OriginalValue: "10V", AlternateValue: "10A"}},
+		},
+		{
 			name:     "spaces in the value",
 			original: []Parameter{{ParamNameEn: "Voltage - Supply", ParamValueEn: "4.5V~16V"}},
 			alt:      []Parameter{{ParamNameEn: "Voltage - Supply", ParamValueEn: " 4.5V ~ 16V "}},
@@ -567,5 +613,61 @@ func TestDiffParametersNilProducts(t *testing.T) {
 	}
 	if got := DiffParameters(p, p); got != nil {
 		t.Fatalf("expected no differences for the same product, got %+v", got)
+	}
+}
+
+func TestPlainQuantityUnit(t *testing.T) {
+	tests := []struct {
+		value  string
+		unit   string
+		wantOK bool
+	}{
+		{"100nF", "nF", true},
+		{"0.1µF", "µF", true},
+		{" 1000 Ω ", "Ω", true},
+		{"-40℃", "℃", true},
+		{"+85°C", "°C", true},
+		{"1%", "%", true},
+		{"40nV/√Hz", "nV/√Hz", true},
+		{"8", "", true},
+		{"21mΩ@10V", "", false},
+		{"1.5V~3.6V", "", false},
+		{"±10%", "", false},
+		{"100,000 cycles", "", false},
+		{"1 N-channel", "", false},
+		{"X7R", "", false},
+		{"", "", false},
+		{".", "", false},
+		{"2 x 3mm", "", false},
+	}
+	for _, tt := range tests {
+		unit, ok := plainQuantityUnit(tt.value)
+		if ok != tt.wantOK || unit != tt.unit {
+			t.Errorf("plainQuantityUnit(%q) = %q, %v, want %q, %v", tt.value, unit, ok, tt.unit, tt.wantOK)
+		}
+	}
+}
+
+func TestSameUnitBase(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want bool
+	}{
+		{"nF", "µF", true},
+		{"pF", "uF", true},
+		{"mΩ", "Ω", true},
+		{"kΩ", "MΩ", true},
+		{"kHz", "Hz", true},
+		{"mm", "m", true},
+		{"", "", true},
+		{"V", "A", false},
+		{"mV", "mA", false},
+		{"", "V", false},
+		{"cycles", "hours", false},
+	}
+	for _, tt := range tests {
+		if got := sameUnitBase(tt.a, tt.b); got != tt.want {
+			t.Errorf("sameUnitBase(%q, %q) = %v, want %v", tt.a, tt.b, got, tt.want)
+		}
 	}
 }

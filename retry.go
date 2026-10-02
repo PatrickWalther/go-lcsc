@@ -18,10 +18,16 @@ import (
 // envelope with HTTP status 200. The client retries an envelope 429 up to
 // MaxRetries times, but an envelope 5xx only one time.
 //
-// When the server sends a Retry-After header, the client waits at least
-// that time before the next attempt. When the Retry-After time is longer
+// When a retryable response has a Retry-After header, the client waits at
+// least that time before the next attempt. This applies to every
+// retryable status, also to HTTP 5xx. When the Retry-After time is longer
 // than MaxBackoff, the client does not retry. It returns the error, and
 // [APIError.RetryAfter] holds the time.
+//
+// When the wait before the next attempt (the backoff or the Retry-After
+// time) ends after the context deadline, the client does not wait. It
+// returns the last error, for example an error that matches [ErrServer],
+// and not context.DeadlineExceeded.
 type RetryConfig struct {
 	MaxRetries     int           // Maximum number of retry attempts (default 3)
 	InitialBackoff time.Duration // Initial backoff duration (default 500ms)

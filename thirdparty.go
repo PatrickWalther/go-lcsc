@@ -157,7 +157,10 @@ type Offer struct {
 	// IsPriceFirst, IsStockFirst and IsDeliveryTimeFirst mark the offer
 	// with the best price, the most stock and the shortest delivery time.
 	// The LCSC site shows them as badges. The meaning comes from the field
-	// names and the data (inferred). LCSC sends null for false.
+	// names and the data (inferred). LCSC sends null for false. LCSC sets
+	// the badges only for a ProductCode request. For a Keyword request, all
+	// offers have false, also the offers that have a badge in the
+	// ProductCode response.
 	IsPriceFirst        bool `json:"isPriceFirst"`
 	IsStockFirst        bool `json:"isStockFirst"`
 	IsDeliveryTimeFirst bool `json:"isDeliveryTimeFirst"`

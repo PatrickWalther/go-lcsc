@@ -154,6 +154,27 @@ func TestIntegrationProductDetailsCurrencyEUR(t *testing.T) {
 	}
 }
 
+// TestIntegrationProductDetailsLowerCaseCode checks that Details finds a
+// product for a lower-case code. LCSC itself finds no product for
+// "c2040", so the client must send the code in upper case.
+func TestIntegrationProductDetailsLowerCaseCode(t *testing.T) {
+	client := newPoliteIntegrationClient()
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	product, err := client.Product.Details(ctx, "c2040")
+	t.Logf("detail c2040: %v, error %v", time.Since(start), err)
+	if err != nil {
+		t.Fatalf("details failed: %v", err)
+	}
+	if product.ProductCode != "C2040" {
+		t.Fatalf("expected C2040, got %q", product.ProductCode)
+	}
+}
+
 // TestIntegrationAlternatesC1525 checks the cross-reference alternates
 // endpoint. C1525 had 99 alternates with the match types 4, 5 and 6.
 func TestIntegrationAlternatesC1525(t *testing.T) {
@@ -176,8 +197,9 @@ func TestIntegrationAlternatesC1525(t *testing.T) {
 	if len(resp.Alternates) == 0 {
 		t.Fatal("expected alternates for C1525")
 	}
-	if resp.TotalCount < len(resp.Alternates) || resp.InStockCount > resp.TotalCount {
-		t.Fatalf("unexpected counts: %d alternates, total %d, in stock %d", len(resp.Alternates), resp.TotalCount, resp.InStockCount)
+	if resp.TotalCount < len(resp.Alternates) || resp.InStockCount > resp.ActualTotalCount || resp.ActualTotalCount < resp.TotalCount {
+		t.Fatalf("unexpected counts: %d alternates, total %d, actual total %d, in stock %d",
+			len(resp.Alternates), resp.TotalCount, resp.ActualTotalCount, resp.InStockCount)
 	}
 
 	labels := map[string]int{}
@@ -192,7 +214,8 @@ func TestIntegrationAlternatesC1525(t *testing.T) {
 			direct = alt
 		}
 	}
-	t.Logf("%d alternates (total %d, in stock %d), labels %v", len(resp.Alternates), resp.TotalCount, resp.InStockCount, labels)
+	t.Logf("%d alternates (total %d, actual total %d, in stock %d), labels %v",
+		len(resp.Alternates), resp.TotalCount, resp.ActualTotalCount, resp.InStockCount, labels)
 	if labels["Direct"]+labels["Upgrade"] == 0 {
 		t.Fatalf("expected at least one alternate with match type 5 or 6, got labels %v", labels)
 	}
@@ -259,12 +282,12 @@ func TestIntegrationSearchList1199(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list failed: %v", err)
 	}
-	t.Logf("%d rows, total %d, actual total %d", len(resp.Products), resp.TotalCount, resp.ActualTotal)
+	t.Logf("%d rows, total %d, actual total %d", len(resp.Products), resp.TotalCount, resp.ActualTotalCount)
 	if len(resp.Products) == 0 {
 		t.Fatal("expected rows for \"10k 0603\" in category 1199")
 	}
-	if resp.ActualTotal < resp.TotalCount || resp.TotalCount < len(resp.Products) {
-		t.Fatalf("unexpected counts: %d rows, total %d, actual total %d", len(resp.Products), resp.TotalCount, resp.ActualTotal)
+	if resp.ActualTotalCount < resp.TotalCount || resp.TotalCount < len(resp.Products) {
+		t.Fatalf("unexpected counts: %d rows, total %d, actual total %d", len(resp.Products), resp.TotalCount, resp.ActualTotalCount)
 	}
 	for _, p := range resp.Products {
 		if p.WmCatalogID != 1199 || p.ProductID == 0 {
@@ -304,6 +327,52 @@ func TestIntegrationSearchListPageSizeLimit(t *testing.T) {
 	}
 }
 
+// TestIntegrationSearchListRowCap checks the 5000-row cap of
+// /product/query/list. LCSC refuses a page that ends after row 5000, also
+// when the page starts before row 5000. At page size 30, page 166 (rows
+// 4951-4980) is the last page that LCSC accepts, and page 167 (rows
+// 4981-5010) gives code 405. SearchService.List refuses page 167 before
+// the request, so this test calls the transport directly.
+func TestIntegrationSearchListRowCap(t *testing.T) {
+	client := newPoliteIntegrationClient()
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	filter := Filter{CatalogIDs: []int{1199}}
+	if _, err := client.Search.List(ctx, &ListRequest{Filter: filter, Page: 167, PageSize: 30}); !errors.Is(err, ErrInvalidRequest) {
+		t.Fatalf("expected List to refuse page 167 at page size 30, got %v", err)
+	}
+
+	send := func(page int) (*productListWrapper, error) {
+		body, err := newQueryListBody(&filter)
+		if err != nil {
+			t.Fatalf("body failed: %v", err)
+		}
+		body.CurrentPage = page
+		body.PageSize = 30
+		start := time.Now()
+		var list productListWrapper
+		err = client.do(ctx, http.MethodPost, "/product/query/list", nil, body, &list)
+		t.Logf("list 1199 page %d at page size 30: %v, error %v", page, time.Since(start), err)
+		return &list, err
+	}
+
+	list, err := send(166)
+	if err != nil {
+		t.Fatalf("expected page 166 to work, got %v", err)
+	}
+	t.Logf("page 166: %d rows, totalRow %d, actualTotalRow %d", len(list.DataList), list.TotalRow, list.ActualTotalRow)
+	if len(list.DataList) == 0 || list.TotalRow != maxListRows {
+		t.Fatalf("expected rows and totalRow %d, got %d rows and totalRow %d", maxListRows, len(list.DataList), list.TotalRow)
+	}
+
+	if _, err := send(167); !errors.Is(err, ErrInvalidRequest) {
+		t.Fatalf("expected ErrInvalidRequest (code 405) for page 167, got %v", err)
+	}
+}
+
 // TestIntegrationSearchParametric100nF0402 checks that a parameter query
 // gives products through the route categories.
 func TestIntegrationSearchParametric100nF0402(t *testing.T) {
@@ -323,7 +392,7 @@ func TestIntegrationSearchParametric100nF0402(t *testing.T) {
 		t.Fatal("expected the route in the response")
 	}
 	t.Logf("scene %q, query types %v, categories %v, %d products, actual total %d",
-		resp.Route.Scene, resp.Route.QueryTypes, resp.CatalogIDs, len(resp.Products), resp.ActualTotal)
+		resp.Route.Scene, resp.Route.QueryTypes, resp.CatalogIDs, len(resp.Products), resp.ActualTotalCount)
 	if len(resp.Products) == 0 {
 		t.Fatal("expected at least one product for \"100nF 0402\"")
 	}
@@ -447,6 +516,9 @@ func TestIntegrationThirdPartyOffersC8734(t *testing.T) {
 			len(offer.ProductPriceList), offer.ProductPriceList[0].Price())
 	}
 	t.Logf("%d offers (total %d), sources %v", len(resp.Offers), resp.TotalCount, sources)
+	if n := countOfferBadges(resp.Offers); n == 0 {
+		t.Fatal("expected badges for a ProductCode request")
+	}
 
 	start = time.Now()
 	hasStock, err := client.ThirdParty.HasStock(ctx, "C8734")
@@ -482,14 +554,81 @@ func TestIntegrationResolveDatasheetURLC1525(t *testing.T) {
 
 	// Read only the first bytes of the file.
 	time.Sleep(time.Second)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pdfURL, nil)
+	checkPDFRange(ctx, t, pdfURL)
+}
+
+// countOfferBadges returns the number of badges in offers.
+func countOfferBadges(offers []Offer) int {
+	n := 0
+	for i := range offers {
+		for _, badge := range []bool{offers[i].IsPriceFirst, offers[i].IsStockFirst, offers[i].IsDeliveryTimeFirst} {
+			if badge {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// TestIntegrationThirdPartyOffersKeywordHasNoBadges checks that LCSC sets
+// no offer badges for a Keyword request. The keyword gives the offers of
+// C8734, which have badges for a ProductCode request.
+func TestIntegrationThirdPartyOffersKeywordHasNoBadges(t *testing.T) {
+	client := newPoliteIntegrationClient()
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	resp, err := client.ThirdParty.Offers(ctx, &OffersRequest{Keyword: "STM32F103C8T6"})
+	t.Logf("offers STM32F103C8T6: %v, error %v", time.Since(start), err)
+	if err != nil {
+		t.Fatalf("offers failed: %v", err)
+	}
+	t.Logf("%d offers (total %d)", len(resp.Offers), resp.TotalCount)
+	if len(resp.Offers) == 0 {
+		t.Fatal("expected offers for STM32F103C8T6")
+	}
+	if n := countOfferBadges(resp.Offers); n != 0 {
+		t.Fatalf("expected no badges for a Keyword request, got %d", n)
+	}
+}
+
+// TestIntegrationResolveDatasheetURLLegacySzlcsc checks that the
+// /szlcsc/ legacy datasheet URL of C327414 maps to a URL that sends a PDF
+// file. JLCPCB sends this form for some parts.
+func TestIntegrationResolveDatasheetURLLegacySzlcsc(t *testing.T) {
+	client := newPoliteIntegrationClient()
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	const legacyURL = "https://datasheet.lcsc.com/szlcsc/1811141225_YAGEO-CC0402ZRY5V7BB104P_C327414.pdf"
+	pdfURL, err := client.Product.ResolveDatasheetURL(ctx, legacyURL)
+	if err != nil {
+		t.Fatalf("resolve failed: %v", err)
+	}
+	t.Logf("datasheet URL %s", pdfURL)
+	if !strings.HasPrefix(pdfURL, legacyDatasheetBaseURL) {
+		t.Fatalf("unexpected datasheet URL %q", pdfURL)
+	}
+	checkPDFRange(ctx, t, pdfURL)
+}
+
+// checkPDFRange reads the first bytes of the file at fileURL. It checks
+// that the server sends a PDF file.
+func checkPDFRange(ctx context.Context, t *testing.T, fileURL string) {
+	t.Helper()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Range", "bytes=0-1023")
 
-	start = time.Now()
+	start := time.Now()
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("download failed: %v", err)

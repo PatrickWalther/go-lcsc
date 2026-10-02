@@ -632,3 +632,15 @@ func TestFilterRelatedProductsKeywordIsDirectCode(t *testing.T) {
 		})
 	}
 }
+
+func TestCacheKeyForSearchKeepsCase(t *testing.T) {
+	if cacheKeyForSearch("USD", "1m 0603") != cacheKeyForSearch("usd", " 1m 0603 ") {
+		t.Fatal("expected the same key for the same keyword with spaces at the ends")
+	}
+	if cacheKeyForSearch("USD", "1m 0603") == cacheKeyForSearch("USD", "1M 0603") {
+		t.Fatal("expected different keys for keywords with a different case")
+	}
+	if cacheKeyForSearch("USD", "1m 0603") == cacheKeyForSearch("EUR", "1m 0603") {
+		t.Fatal("expected different keys for different currencies")
+	}
+}

@@ -343,14 +343,14 @@ func (s *SearchService) listFromRoute(ctx context.Context, route *Route, o param
 			return nil, err
 		}
 		resp.Products = pageOfProducts([]Product{*product}, o.page, o.pageSize)
-		resp.TotalCount, resp.ActualTotal = 1, 1
+		resp.TotalCount, resp.ActualTotalCount = 1, 1
 		return resp, nil
 	}
 
 	if route.ProductModel && len(route.ExactMatches) > 0 {
 		resp.Products = pageOfProducts(route.ExactMatches, o.page, o.pageSize)
 		resp.TotalCount = len(route.ExactMatches)
-		resp.ActualTotal = resp.TotalCount
+		resp.ActualTotalCount = resp.TotalCount
 		return resp, nil
 	}
 
@@ -390,14 +390,16 @@ func (s *SearchService) listFromRoute(ctx context.Context, route *Route, o param
 			}
 		}
 		resp.Products = products
-		resp.TotalCount, resp.ActualTotal = total, total
+		resp.TotalCount, resp.ActualTotalCount = total, total
 		return resp, nil
 	}
 
 	return resp, nil
 }
 
-// routePage gets one page of the v3 product list.
+// routePage gets one page of the v3 product list. A live check showed that
+// LCSC accepts page size 100 for this list, the largest page size of
+// [ParametricOptions].
 func (s *SearchService) routePage(ctx context.Context, keyword string, page, pageSize int) ([]Product, int, error) {
 	body := routeRequestBody{Keyword: keyword, CurrentPage: page, PageSize: pageSize}
 	var wrapper searchResponseWrapper
@@ -428,8 +430,11 @@ func pageOfProducts(products []Product, page, pageSize int) []Product {
 	return products[start:end]
 }
 
+// cacheKeyForRoute makes the cache key of [SearchService.Route]. The key
+// keeps the case of the keyword (see [cacheKeyForSearch]). Route.Keyword
+// is then always the keyword of the request.
 func cacheKeyForRoute(currency, keyword string) string {
-	hash := sha256.Sum256([]byte(strings.ToUpper(strings.TrimSpace(keyword))))
+	hash := sha256.Sum256([]byte(strings.TrimSpace(keyword)))
 	return fmt.Sprintf("route:%s:%s", strings.ToUpper(currency), hex.EncodeToString(hash[:8]))
 }
 
@@ -499,9 +504,10 @@ func (p *Product) SimilarFilter(relax ...string) Filter {
 //
 // Similar returns [ErrInvalidRequest] when the product has no category
 // id. LCSC sends no error for a parameter name or value that it does not
-// know. It returns no products then.
+// know. It returns no products then. Similar changes the code to upper
+// case, as [ProductService.Details] does.
 func (s *SearchService) Similar(ctx context.Context, code string, opts *SimilarOptions) (*ListResponse, error) {
-	code = strings.TrimSpace(code)
+	code = strings.ToUpper(strings.TrimSpace(code))
 	if code == "" {
 		return nil, fmt.Errorf("%w: productCode is required", ErrInvalidRequest)
 	}

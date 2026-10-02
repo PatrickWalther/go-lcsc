@@ -11,12 +11,14 @@ import (
 	"strings"
 )
 
-// ProductService handles product-detail operations.
+// ProductService handles product-detail operations and datasheet URLs.
 type ProductService service
 
-// Details retrieves detailed information for a specific product code.
+// Details retrieves detailed information for a specific product code. It
+// changes the code to upper case, because LCSC finds no product for a
+// lower-case code such as "c25744".
 func (s *ProductService) Details(ctx context.Context, productCode string) (*Product, error) {
-	productCode = strings.TrimSpace(productCode)
+	productCode = strings.ToUpper(strings.TrimSpace(productCode))
 	if productCode == "" {
 		return nil, fmt.Errorf("%w: productCode is required", ErrInvalidRequest)
 	}

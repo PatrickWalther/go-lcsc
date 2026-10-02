@@ -252,6 +252,62 @@ func TestRetryStopsWhenContextEndsBeforeRetryAfter(t *testing.T) {
 	}
 }
 
+func TestRetryStopsWhenContextEndsBeforeBackoff(t *testing.T) {
+	delays := recordRetrySleeps(t)
+	var calls int32
+	client := NewClient(
+		WithBaseURL("https://wmsc.lcsc.com/ftps/wm"),
+		WithHTTPClient(newTestHTTPClient(func(req *http.Request) (*http.Response, error) {
+			atomic.AddInt32(&calls, 1)
+			return jsonResponse(http.StatusServiceUnavailable, "busy"), nil
+		})),
+		WithRateLimit(1000),
+		WithoutCache(),
+		WithRetryConfig(RetryConfig{
+			MaxRetries:     3,
+			InitialBackoff: 2 * time.Second,
+			MaxBackoff:     30 * time.Second,
+			Multiplier:     1,
+		}),
+	)
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	// The backoff without Retry-After also ends after the deadline. The
+	// client returns the API error and does not wait.
+	_, err := client.Product.Details(ctx, "C1525")
+	if !errors.Is(err, ErrServer) || errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected ErrServer and not a context error, got %v", err)
+	}
+	if got := atomic.LoadInt32(&calls); got != 1 {
+		t.Fatalf("expected 1 request, got %d", got)
+	}
+	if len(*delays) != 0 {
+		t.Fatalf("expected no wait, got %v", *delays)
+	}
+}
+
+func TestRetryAfterOnHTTPServerError(t *testing.T) {
+	delays := recordRetrySleeps(t)
+	var calls int32
+	client := newRetryTestClient(func(req *http.Request) (*http.Response, error) {
+		if atomic.AddInt32(&calls, 1) == 1 {
+			return responseWithHeader(http.StatusServiceUnavailable, "busy", "Retry-After", "2"), nil
+		}
+		return jsonResponse(http.StatusOK, okDetailBody), nil
+	})
+	defer func() { _ = client.Close() }()
+
+	if _, err := client.Product.Details(context.Background(), "C1525"); err != nil {
+		t.Fatalf("details failed: %v", err)
+	}
+	if want := []time.Duration{2 * time.Second}; len(*delays) != 1 || (*delays)[0] != want[0] {
+		t.Fatalf("expected delays %v, got %v", want, *delays)
+	}
+}
+
 func TestRetryDelay(t *testing.T) {
 	config := RetryConfig{
 		InitialBackoff: 5 * time.Second,

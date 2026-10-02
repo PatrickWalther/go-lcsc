@@ -128,11 +128,17 @@ const (
 	// [ProductService.ResolveDatasheetURL] gets from a viewer page.
 	datasheetCacheTTL = 24 * time.Hour
 
-	// legacyDatasheetBaseURL replaces https://datasheet.lcsc.com/lcsc/ in
-	// a legacy datasheet URL. The legacy URL sends a redirect to the HTML
-	// viewer. The URL with this base sends the PDF file.
+	// legacyDatasheetBaseURL replaces https://datasheet.lcsc.com/lcsc/ or
+	// https://datasheet.lcsc.com/szlcsc/ in a legacy datasheet URL. The
+	// legacy URL sends a redirect to the HTML viewer. The URL with this
+	// base sends the PDF file.
 	legacyDatasheetBaseURL = "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/"
 )
+
+// legacyDatasheetPrefixes holds the path prefixes of the legacy datasheet
+// URLs on datasheet.lcsc.com. A /szlcsc/ URL sends a redirect to the
+// /lcsc/ URL with the same file name.
+var legacyDatasheetPrefixes = []string{"/lcsc/", "/szlcsc/"}
 
 var (
 	// nextDataPattern finds the JSON data of a Next.js page.
@@ -150,7 +156,8 @@ const (
 	// datasheetOther is a URL that the resolver does not change.
 	datasheetOther datasheetURLKind = iota
 
-	// datasheetLegacy is https://datasheet.lcsc.com/lcsc/{file}.pdf.
+	// datasheetLegacy is https://datasheet.lcsc.com/lcsc/{file}.pdf or
+	// https://datasheet.lcsc.com/szlcsc/{file}.pdf.
 	datasheetLegacy
 
 	// datasheetViewer is an HTML viewer page under
@@ -163,13 +170,29 @@ func classifyDatasheetURL(u *url.URL) datasheetURLKind {
 	host := strings.ToLower(u.Hostname())
 	path := u.EscapedPath()
 	switch {
-	case host == "datasheet.lcsc.com" && strings.HasPrefix(path, "/lcsc/") && len(path) > len("/lcsc/"):
+	case legacyDatasheetFile(u) != "":
 		return datasheetLegacy
 	case (host == "www.lcsc.com" || host == "lcsc.com") && strings.HasPrefix(path, "/datasheet/") && len(path) > len("/datasheet/"):
 		return datasheetViewer
 	default:
 		return datasheetOther
 	}
+}
+
+// legacyDatasheetFile returns the escaped file path of a legacy datasheet
+// URL, for example "{file}.pdf" for https://datasheet.lcsc.com/lcsc/{file}.pdf.
+// It returns an empty string when u is not a legacy datasheet URL.
+func legacyDatasheetFile(u *url.URL) string {
+	if strings.ToLower(u.Hostname()) != "datasheet.lcsc.com" {
+		return ""
+	}
+	path := u.EscapedPath()
+	for _, prefix := range legacyDatasheetPrefixes {
+		if file := strings.TrimPrefix(path, prefix); file != path && file != "" {
+			return file
+		}
+	}
+	return ""
 }
 
 // isDatasheetRedirect reports whether the client follows a redirect from a
@@ -201,8 +224,9 @@ func isDatasheetRedirect(u *url.URL) bool {
 //  1. https://datasheet.lcsc.com/datasheet/pdf/{hash}.pdf?productCode={C}.
 //     [Product.PdfURL] uses this form. It sends the PDF file.
 //     ResolveDatasheetURL returns it with no change.
-//  2. https://datasheet.lcsc.com/lcsc/{file}.pdf (legacy form). It sends a
-//     redirect to the HTML viewer. ResolveDatasheetURL returns
+//  2. https://datasheet.lcsc.com/lcsc/{file}.pdf or
+//     https://datasheet.lcsc.com/szlcsc/{file}.pdf (legacy forms). They
+//     send a redirect to the HTML viewer. ResolveDatasheetURL returns
 //     https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/{file}.pdf, which
 //     sends the PDF file. It does not send a request.
 //  3. https://www.lcsc.com/datasheet/{name}.pdf (viewer form). The JLCPCB
@@ -233,7 +257,7 @@ func (s *ProductService) ResolveDatasheetURL(ctx context.Context, raw string) (s
 
 	switch classifyDatasheetURL(u) {
 	case datasheetLegacy:
-		return legacyDatasheetBaseURL + strings.TrimPrefix(u.EscapedPath(), "/lcsc/"), nil
+		return legacyDatasheetBaseURL + legacyDatasheetFile(u), nil
 	case datasheetViewer:
 		return s.resolveDatasheetViewer(ctx, u)
 	default:
