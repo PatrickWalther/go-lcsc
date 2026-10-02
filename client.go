@@ -55,7 +55,17 @@ func WithBaseURL(baseURL string) ClientOption {
 	}
 }
 
-// WithCurrency sets the currency for price responses.
+// WithCurrency sets the currency for price responses. The client sends the
+// code in the currencyCode cookie. The default is "USD".
+//
+// LCSC supports only the codes in [SupportedCurrencies]. For any other
+// code, for example "JPY" or "GBP", LCSC answers in USD. The client does
+// not check the code. Use [Product.Currency] to get the currency of a
+// response.
+//
+// The currency changes [PriceBreak.CurrencyPrice], [PriceBreak.Price] and
+// [Product.ReelPrice]. [PriceBreak.ProductPrice] is in USD for every
+// currency.
 func WithCurrency(currency string) ClientOption {
 	return func(c *Client) {
 		currency = strings.ToUpper(strings.TrimSpace(currency))

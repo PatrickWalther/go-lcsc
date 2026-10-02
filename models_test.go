@@ -157,3 +157,227 @@ func TestParameterJSONTags(t *testing.T) {
 		t.Fatalf("unexpected fourth parameter: %+v", params[3])
 	}
 }
+
+func TestFlexFloat64UnmarshalEmptyAndNull(t *testing.T) {
+	for _, raw := range []string{`""`, `"  "`, `null`} {
+		f := FlexFloat64(1)
+		if err := json.Unmarshal([]byte(raw), &f); err != nil {
+			t.Fatalf("%s: unmarshal failed: %v", raw, err)
+		}
+		if f != 0 {
+			t.Fatalf("%s: expected 0, got %v", raw, f)
+		}
+	}
+}
+
+func TestPriceBreakDecodesCurrencyFields(t *testing.T) {
+	// Live C2040 price break under the EUR cookie. productPrice is a USD
+	// string. usdPrice and currencyPrice are numbers.
+	raw := []byte(`{"ladder":1,"productPrice":"0.9975","usdPrice":0.9975,"currencyPrice":0.8878,"currencySymbol":"\u20ac"}`)
+
+	var pb PriceBreak
+	if err := json.Unmarshal(raw, &pb); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if pb.ProductPrice != 0.9975 || pb.USDPrice != 0.9975 || pb.CurrencyPrice != 0.8878 {
+		t.Fatalf("unexpected prices: %+v", pb)
+	}
+	if pb.CurrencySymbol != "\u20ac" {
+		t.Fatalf("unexpected symbol %q", pb.CurrencySymbol)
+	}
+	if pb.Price() != 0.8878 {
+		t.Fatalf("expected Price 0.8878, got %v", pb.Price())
+	}
+}
+
+func TestPriceBreakPrice(t *testing.T) {
+	tests := []struct {
+		name string
+		pb   PriceBreak
+		want float64
+	}{
+		{"currency price", PriceBreak{ProductPrice: 0.9975, USDPrice: 0.9975, CurrencyPrice: 6.9227}, 6.9227},
+		{"no currency price", PriceBreak{ProductPrice: 0.9975}, 0.9975},
+		{"zero currency price", PriceBreak{ProductPrice: 0.5, CurrencyPrice: 0}, 0.5},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.pb.Price(); got != tt.want {
+				t.Fatalf("expected %v, got %v", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestSupportedCurrencies(t *testing.T) {
+	want := map[string]string{"USD": "$", "CNY": "\uffe5", "EUR": "\u20ac", "HKD": "HK$"}
+	if len(SupportedCurrencies) != len(want) {
+		t.Fatalf("expected %d currencies, got %v", len(want), SupportedCurrencies)
+	}
+	for code, symbol := range want {
+		if SupportedCurrencies[code] != symbol {
+			t.Fatalf("%s: expected symbol %q, got %q", code, symbol, SupportedCurrencies[code])
+		}
+	}
+}
+
+func TestProductCurrency(t *testing.T) {
+	withSymbol := func(symbol string) []PriceBreak {
+		return []PriceBreak{{Ladder: 1, ProductPrice: 1, CurrencySymbol: symbol}}
+	}
+	tests := []struct {
+		name string
+		p    *Product
+		want string
+	}{
+		{"currency type", &Product{CurrencyType: "EUR", ProductPriceList: withSymbol("$")}, "EUR"},
+		{"lower-case currency type", &Product{CurrencyType: " hkd "}, "HKD"},
+		{"USD symbol", &Product{ProductPriceList: withSymbol("$")}, "USD"},
+		{"CNY symbol", &Product{ProductPriceList: withSymbol("\uffe5")}, "CNY"},
+		{"EUR symbol", &Product{ProductPriceList: withSymbol("\u20ac")}, "EUR"},
+		{"HKD symbol", &Product{ProductPriceList: withSymbol("HK$")}, "HKD"},
+		{"first known symbol", &Product{ProductPriceList: append(withSymbol(""), withSymbol("HK$")...)}, "HKD"},
+		{"unknown symbol", &Product{ProductPriceList: withSymbol("\u00a3")}, "USD"},
+		{"no prices", &Product{}, "USD"},
+		{"nil product", nil, "USD"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.p.Currency(); got != tt.want {
+				t.Fatalf("expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestProductCurrencyFromLiveRows(t *testing.T) {
+	// Live C2040 price rows. A row without currencyType gets the currency
+	// from the symbol. A JPY cookie gives USD prices, because LCSC does not
+	// support JPY.
+	tests := []struct {
+		name  string
+		raw   string
+		want  string
+		price float64
+	}{
+		{"CNY row", `{"productCode":"C2040","productPriceList":[{"ladder":1,"productPrice":"0.9975","usdPrice":0.9975,"currencyPrice":6.9227,"currencySymbol":"\uffe5"}]}`, "CNY", 6.9227},
+		{"HKD row", `{"productCode":"C2040","productPriceList":[{"ladder":1,"productPrice":"0.9975","usdPrice":0.9975,"currencyPrice":7.9601,"currencySymbol":"HK$"}]}`, "HKD", 7.9601},
+		{"JPY cookie detail", `{"productCode":"C2040","currencyType":"USD","productPriceList":[{"ladder":1,"productPrice":"0.9975","usdPrice":0.9975,"currencyPrice":0.9975,"currencySymbol":"$"}]}`, "USD", 0.9975},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var p Product
+			if err := json.Unmarshal([]byte(tt.raw), &p); err != nil {
+				t.Fatalf("unmarshal failed: %v", err)
+			}
+			if got := p.Currency(); got != tt.want {
+				t.Fatalf("expected currency %q, got %q", tt.want, got)
+			}
+			if got := p.ProductPriceList[0].Price(); got != tt.price {
+				t.Fatalf("expected price %v, got %v", tt.price, got)
+			}
+			if p.ProductPriceList[0].ProductPrice != 0.9975 {
+				t.Fatalf("expected USD product price 0.9975, got %v", p.ProductPriceList[0].ProductPrice)
+			}
+		})
+	}
+}
+
+func TestProductLifecycle(t *testing.T) {
+	yes, no := true, false
+	tests := []struct {
+		name string
+		p    *Product
+		want Lifecycle
+	}{
+		{"normal", &Product{ProductCycle: "normal", IsForeignOnsale: &yes}, LifecycleActive},
+		{"normal without other fields", &Product{ProductCycle: "normal"}, LifecycleActive},
+		{"upper-case normal", &Product{ProductCycle: " NORMAL "}, LifecycleActive},
+		{"stop_product", &Product{ProductCycle: "stop_product", IsNotOverstock: true, IsForeignOnsale: &yes}, LifecycleDiscontinued},
+		{"stop_product not on sale", &Product{ProductCycle: "stop_product", IsNotOverstock: true, IsForeignOnsale: &no}, LifecycleDiscontinued},
+		{"sold_out", &Product{ProductCycle: "sold_out", IsNotOverstock: true, IsForeignOnsale: &yes}, LifecycleNotRecommended},
+		{"other cycle", &Product{ProductCycle: "not_recommend"}, LifecycleNotRecommended},
+		{"empty cycle with overstock flag", &Product{IsNotOverstock: true}, LifecycleNotRecommended},
+		{"empty cycle with lifecycle fields", &Product{ProductCode: "C1", IsForeignOnsale: &yes}, LifecycleActive},
+		{"no lifecycle data", &Product{ProductCode: "C1"}, LifecycleUnknown},
+		{"nil product", nil, LifecycleUnknown},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.p.Lifecycle(); got != tt.want {
+				t.Fatalf("expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestProductLifecycleFromLiveRows(t *testing.T) {
+	// Lifecycle fields of live detail responses: C6119803 (stop_product),
+	// C49211289 (sold_out) and C1525 (normal).
+	tests := []struct {
+		raw       string
+		lifecycle Lifecycle
+		backorder bool
+	}{
+		{`{"productCode":"C6119803","productCycle":"stop_product","isNotOverstock":true,"isForeignOnsale":true}`, LifecycleDiscontinued, false},
+		{`{"productCode":"C49211289","productCycle":"sold_out","isNotOverstock":true,"isForeignOnsale":true}`, LifecycleNotRecommended, false},
+		{`{"productCode":"C1525","productCycle":"normal","isNotOverstock":false,"isForeignOnsale":true}`, LifecycleActive, true},
+	}
+	for _, tt := range tests {
+		var p Product
+		if err := json.Unmarshal([]byte(tt.raw), &p); err != nil {
+			t.Fatalf("unmarshal failed: %v", err)
+		}
+		if got := p.Lifecycle(); got != tt.lifecycle {
+			t.Fatalf("%s: expected %q, got %q", p.ProductCode, tt.lifecycle, got)
+		}
+		if got := p.AllowsBackorder(); got != tt.backorder {
+			t.Fatalf("%s: expected AllowsBackorder %v, got %v", p.ProductCode, tt.backorder, got)
+		}
+	}
+}
+
+func TestProductAllowsBackorder(t *testing.T) {
+	yes, no := true, false
+	tests := []struct {
+		name string
+		p    *Product
+		want bool
+	}{
+		{"normal", &Product{ProductCycle: "normal", IsForeignOnsale: &yes}, true},
+		{"no flags", &Product{}, true},
+		{"not overstock", &Product{IsNotOverstock: true, IsForeignOnsale: &yes}, false},
+		{"not on sale overseas", &Product{IsForeignOnsale: &no}, false},
+		{"nil product", nil, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.p.AllowsBackorder(); got != tt.want {
+				t.Fatalf("expected %v, got %v", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestFlashSalePriceAndDeliveryDays(t *testing.T) {
+	var nilSale *FlashSale
+	if nilSale.Price() != 0 {
+		t.Fatal("expected 0 for a nil flash sale")
+	}
+	if _, _, ok := nilSale.DeliveryDays(); ok {
+		t.Fatal("expected no delivery days for a nil flash sale")
+	}
+
+	usdOnly := &FlashSale{USDPrice: 0.0017}
+	if usdOnly.Price() != 0.0017 {
+		t.Fatalf("expected the USD price, got %v", usdOnly.Price())
+	}
+	if _, _, ok := usdOnly.DeliveryDays(); ok {
+		t.Fatal("expected no delivery days without deliveryTimeWayDays")
+	}
+
+	oneValue := &FlashSale{DeliveryTimeWayDays: []int{5}}
+	if minDays, maxDays, ok := oneValue.DeliveryDays(); !ok || minDays != 5 || maxDays != 5 {
+		t.Fatalf("expected 5-5 days, got %d-%d (%v)", minDays, maxDays, ok)
+	}
+}

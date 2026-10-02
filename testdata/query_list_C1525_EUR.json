@@ -1,0 +1,94 @@
+{
+  "code": 200,
+  "msg": null,
+  "result": {
+    "currPage": 1,
+    "pageRow": 5,
+    "totalPage": 1,
+    "totalRow": 1,
+    "dataList": [
+      {
+        "productId": 1877,
+        "productCode": "C1525",
+        "isForeignOnsale": true,
+        "minBuyNumber": 100,
+        "maxBuyNumber": -1,
+        "isNotOverstock": false,
+        "productCycle": "normal",
+        "productArrange": "Tape & Reel (TR)",
+        "minPacketNumber": 10000,
+        "encapStandard": "0402",
+        "productModel": "CL05B104KO5NNNC",
+        "brandId": 254,
+        "brandNameEn": "Samsung Electro-Mechanics",
+        "catalogName": "Multilayer Ceramic Capacitors MLCC - SMD/SMT",
+        "parentCatalogName": "Capacitors",
+        "productIntroEn": "100nF \u00b110% 16V Ceramic Capacitor X7R 0402",
+        "isPreSale": false,
+        "productPriceList": [
+          {
+            "ladder": 100,
+            "productPrice": "0.0045",
+            "usdPrice": 0.0045,
+            "currencyPrice": 0.0041,
+            "currencySymbol": "\u20ac"
+          },
+          {
+            "ladder": 1000,
+            "productPrice": "0.0034",
+            "usdPrice": 0.0034,
+            "currencyPrice": 0.0031,
+            "currencySymbol": "\u20ac"
+          },
+          {
+            "ladder": 3000,
+            "productPrice": "0.0029",
+            "usdPrice": 0.0029,
+            "currencyPrice": 0.0026,
+            "currencySymbol": "\u20ac"
+          }
+        ],
+        "stockJs": 0,
+        "stockSz": 0,
+        "wmStockHk": 0,
+        "stockNumber": 0,
+        "split": 100,
+        "productImageUrl": "https://assets.lcsc.com/images/lcsc/96x96/20221227_Samsung-Electro-Mechanics-CL05B104KO5NNNC_C1525_front.jpg",
+        "productImageUrlBig": "https://assets.lcsc.com/images/lcsc/900x900/20221227_Samsung-Electro-Mechanics-CL05B104KO5NNNC_C1525_front.jpg",
+        "pdfUrl": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf?productCode=C1525",
+        "isReel": true,
+        "reelPrice": 3.0,
+        "wmCatalogId": 1142,
+        "eccn": "EAR99",
+        "hasThirdPartyStock": true,
+        "flashSaleProductPO": {
+          "productId": 1877,
+          "productCode": "C1525",
+          "productModel": "CL05B104KO5NNNC",
+          "sellPrice": 0.0016,
+          "usdPrice": 0.0017,
+          "sellCurrencyType": "EUR",
+          "currencySymbol": "\u20ac",
+          "arriveDays": 6,
+          "recommendNumber": 120000,
+          "minOrderNum": 100000,
+          "validNumber": 120000,
+          "expiredTime": "2026-10-13 23:59:59",
+          "isOnsale": true,
+          "deliveryTimeWayDays": [
+            7,
+            9
+          ],
+          "productBatchCodeEn": "25/26+",
+          "split": 10000,
+          "isReel": true,
+          "reelPrice": 3.0
+        },
+        "hasAlternatePart": true,
+        "matchType": null
+      }
+    ],
+    "actualTotalRow": 1
+  },
+  "ok": true
+}

@@ -34,6 +34,11 @@ func TestAPIErrorUnwrapMapping(t *testing.T) {
 			want: ErrInvalidRequest,
 		},
 		{
+			name: "envelope invalid field",
+			err:  &APIError{StatusCode: 200, Code: 405, Message: "Invalid field. Please check again."},
+			want: ErrInvalidRequest,
+		},
+		{
 			name: "not found",
 			err:  &APIError{StatusCode: 404, Code: 404},
 			want: ErrNotFound,

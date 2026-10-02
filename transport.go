@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type apiEnvelope struct {
@@ -17,14 +18,23 @@ type apiEnvelope struct {
 	Result  json.RawMessage `json:"result"`
 }
 
-func (c *Client) do(ctx context.Context, method, path string, params url.Values, reqBody interface{}, result interface{}) error {
-	var lastErr error
-	maxAttempts := c.retryConfig.MaxRetries + 1
+// maxEnvelopeServerRetries is the maximum number of retries for a server
+// error that LCSC sends in the response envelope with a 2xx HTTP status.
+// LCSC also sends such an error for some bad inputs. More retries only send
+// the same failing request again.
+const maxEnvelopeServerRetries = 1
 
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+// retrySleep waits between attempts. Tests replace it to record the delays.
+var retrySleep = sleep
+
+func (c *Client) do(ctx context.Context, method, path string, params url.Values, reqBody interface{}, result interface{}) error {
+	maxAttempts := c.retryConfig.MaxRetries + 1
+	envelopeServerRetries := 0
+	var delay time.Duration
+
+	for attempt := 0; ; attempt++ {
 		if attempt > 0 {
-			backoff := c.retryConfig.calculateBackoff(attempt - 1)
-			if err := sleep(ctx, backoff); err != nil {
+			if err := retrySleep(ctx, delay); err != nil {
 				return err
 			}
 		}
@@ -38,13 +48,27 @@ func (c *Client) do(ctx context.Context, method, path string, params url.Values,
 			return nil
 		}
 
-		lastErr = err
-		if !shouldRetry(err, statusCode) || attempt >= maxAttempts-1 {
+		if attempt >= maxAttempts-1 || !shouldRetry(err, statusCode) {
+			return err
+		}
+		if isEnvelopeServerError(err, statusCode) {
+			if envelopeServerRetries >= maxEnvelopeServerRetries {
+				return err
+			}
+			envelopeServerRetries++
+		}
+
+		var ok bool
+		delay, ok = c.retryConfig.retryDelay(attempt, err)
+		if !ok {
+			return err
+		}
+		// Do not wait when the context ends before the next attempt. The
+		// caller then gets the API error and not a context error.
+		if deadline, hasDeadline := ctx.Deadline(); hasDeadline && time.Until(deadline) < delay {
 			return err
 		}
 	}
-
-	return lastErr
 }
 
 func (c *Client) doOnce(ctx context.Context, method, path string, params url.Values, reqBody interface{}, result interface{}) (int, error) {
@@ -82,12 +106,15 @@ func (c *Client) doOnce(ctx context.Context, method, path string, params url.Val
 		return resp.StatusCode, fmt.Errorf("lcsc: failed to read response body: %w", err)
 	}
 
+	retryAfter := time.Duration(parseRetryAfter(resp.Header.Get("Retry-After"))) * time.Second
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return resp.StatusCode, &APIError{
 			StatusCode: resp.StatusCode,
 			Code:       resp.StatusCode,
 			Message:    http.StatusText(resp.StatusCode),
 			Details:    string(respBody),
+			RetryAfter: retryAfter,
 		}
 	}
 
@@ -102,6 +129,7 @@ func (c *Client) doOnce(ctx context.Context, method, path string, params url.Val
 			Code:       envelope.Code,
 			Message:    envelopeMessage(envelope.Message),
 			Details:    string(respBody),
+			RetryAfter: retryAfter,
 		}
 	}
 

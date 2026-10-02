@@ -108,3 +108,42 @@ func TestIntegrationProductDetails(t *testing.T) {
 		t.Fatal("expected product code")
 	}
 }
+
+// TestIntegrationProductDetailsCurrencyEUR checks that LCSC sends
+// productPrice in USD and currencyPrice in EUR under the EUR cookie.
+func TestIntegrationProductDetailsCurrencyEUR(t *testing.T) {
+	client := NewClient(WithCurrency("EUR"), WithoutCache())
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	product, err := client.Product.Details(ctx, "C2040")
+	t.Logf("detail C2040 (EUR): %v, error %v", time.Since(start), err)
+	if err != nil {
+		t.Fatalf("details failed: %v", err)
+	}
+
+	// The id of C2040 has not changed in the observed data.
+	if product.ProductID != 2392 {
+		t.Errorf("expected product id 2392, got %d", product.ProductID)
+	}
+	if got := product.Currency(); got != "EUR" {
+		t.Fatalf("expected currency EUR, got %q (currencyType %q)", got, product.CurrencyType)
+	}
+	if len(product.ProductPriceList) == 0 {
+		t.Fatal("expected price breaks")
+	}
+	for _, pb := range product.ProductPriceList {
+		if pb.CurrencyPrice <= 0 || pb.CurrencyPrice == pb.ProductPrice {
+			t.Fatalf("ladder %d: expected a EUR price different from the USD price, got currencyPrice %v and productPrice %v", pb.Ladder, pb.CurrencyPrice, pb.ProductPrice)
+		}
+		if pb.Price() != float64(pb.CurrencyPrice) {
+			t.Fatalf("ladder %d: expected Price to return currencyPrice %v, got %v", pb.Ladder, pb.CurrencyPrice, pb.Price())
+		}
+		if pb.USDPrice != pb.ProductPrice {
+			t.Errorf("ladder %d: expected usdPrice %v to equal productPrice %v", pb.Ladder, pb.USDPrice, pb.ProductPrice)
+		}
+	}
+}

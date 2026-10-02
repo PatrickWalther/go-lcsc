@@ -59,6 +59,9 @@ func TestSearchKeywordSuccess(t *testing.T) {
 	if resp.TotalCount != 1 {
 		t.Fatalf("expected total count 1, got %d", resp.TotalCount)
 	}
+	if resp.ActualTotalCount != 1 {
+		t.Fatalf("expected actual total count 1, got %d", resp.ActualTotalCount)
+	}
 	if len(resp.Products) != 1 {
 		t.Fatalf("expected 1 product, got %d", len(resp.Products))
 	}
@@ -130,6 +133,10 @@ func TestSearchKeywordFallbackToProductQueryList(t *testing.T) {
 	}
 	if resp.TotalCount != 129 {
 		t.Fatalf("expected total count 129, got %d", resp.TotalCount)
+	}
+	// The response has no actualTotalRow. The client uses totalRow.
+	if resp.ActualTotalCount != 129 {
+		t.Fatalf("expected actual total count 129, got %d", resp.ActualTotalCount)
 	}
 }
 
@@ -357,8 +364,9 @@ func TestProductDetailsValidationAndNotFound(t *testing.T) {
 }
 
 func TestProductDetailsDecodesOrderFieldsAndAlternates(t *testing.T) {
-	// Trimmed live response for C1525 with five alternates.
-	fixture := mustReadFixture(t, "product_detail_C1525.json")
+	// Trimmed live response for C1525 under the EUR cookie, with five
+	// alternates.
+	fixture := mustReadFixture(t, "product_detail_C1525_EUR.json")
 	httpClient := newTestHTTPClient(func(req *http.Request) (*http.Response, error) {
 		return jsonResponse(http.StatusOK, fixture), nil
 	})
@@ -442,7 +450,7 @@ func TestProductDetailsDecodesOrderFieldsAndAlternates(t *testing.T) {
 }
 
 func TestProductDetailsCacheKeepsNewFields(t *testing.T) {
-	fixture := mustReadFixture(t, "product_detail_C1525.json")
+	fixture := mustReadFixture(t, "product_detail_C1525_EUR.json")
 	var calls int32
 	httpClient := newTestHTTPClient(func(req *http.Request) (*http.Response, error) {
 		atomic.AddInt32(&calls, 1)
@@ -475,7 +483,128 @@ func TestProductDetailsCacheKeepsNewFields(t *testing.T) {
 	if got := atomic.LoadInt32(&calls); got != 1 {
 		t.Fatalf("expected one HTTP request with cache hit, got %d", got)
 	}
+	if first.FlashSale == nil || first.IsForeignOnsale == nil || first.ProductPriceList[0].CurrencyPrice == 0 {
+		t.Fatalf("expected the fixture to fill the pointer and currency fields: %+v", first)
+	}
 	if !reflect.DeepEqual(first, second) {
 		t.Fatalf("cached product differs from the decoded product:\n%+v\n%+v", first, second)
+	}
+}
+
+func TestProductDetailsDecodesCurrencyIDsAndLifecycle(t *testing.T) {
+	// Trimmed live response for C1525 under the EUR cookie. LCSC sends
+	// productPrice in USD and currencyPrice in EUR.
+	fixture := mustReadFixture(t, "product_detail_C1525_EUR.json")
+	httpClient := newTestHTTPClient(func(req *http.Request) (*http.Response, error) {
+		if got := req.Header.Get("Cookie"); got != "currencyCode=EUR" {
+			t.Errorf("expected the EUR currency cookie, got %q", got)
+		}
+		return jsonResponse(http.StatusOK, fixture), nil
+	})
+
+	client := NewClient(
+		WithBaseURL("https://wmsc.lcsc.com/ftps/wm"),
+		WithHTTPClient(httpClient),
+		WithCurrency("eur"),
+		WithoutRetry(),
+		WithoutCache(),
+	)
+	defer func() { _ = client.Close() }()
+
+	p, err := client.Product.Details(context.Background(), "C1525")
+	if err != nil {
+		t.Fatalf("details failed: %v", err)
+	}
+
+	if p.ProductID != 1877 || p.BrandID != 254 || p.WmCatalogID != 1142 {
+		t.Fatalf("unexpected ids: product %d, brand %d, catalog %d", p.ProductID, p.BrandID, p.WmCatalogID)
+	}
+	if p.CurrencyType != "EUR" || p.Currency() != "EUR" {
+		t.Fatalf("expected currency EUR, got type %q and currency %q", p.CurrencyType, p.Currency())
+	}
+
+	wantPrices := []struct {
+		ladder       int
+		productPrice float64
+		usdPrice     float64
+		eurPrice     float64
+	}{
+		{100, 0.0045, 0.0045, 0.0041},
+		{1000, 0.0034, 0.0034, 0.0031},
+		{3000, 0.0029, 0.0029, 0.0026},
+		{10000, 0.0025, 0.0025, 0.0023},
+		{50000, 0.0024, 0.0024, 0.0022},
+		{100000, 0.0023, 0.0023, 0.0021},
+	}
+	if len(p.ProductPriceList) != len(wantPrices) {
+		t.Fatalf("expected %d price breaks, got %d", len(wantPrices), len(p.ProductPriceList))
+	}
+	for i, want := range wantPrices {
+		pb := p.ProductPriceList[i]
+		if pb.Ladder != want.ladder || float64(pb.ProductPrice) != want.productPrice || float64(pb.USDPrice) != want.usdPrice || float64(pb.CurrencyPrice) != want.eurPrice {
+			t.Fatalf("price break %d: got %+v, want %+v", i, pb, want)
+		}
+		if pb.CurrencySymbol != "\u20ac" {
+			t.Fatalf("price break %d: unexpected symbol %q", i, pb.CurrencySymbol)
+		}
+		if pb.Price() != want.eurPrice || pb.Price() == float64(pb.ProductPrice) {
+			t.Fatalf("price break %d: expected Price %v (EUR), got %v", i, want.eurPrice, pb.Price())
+		}
+	}
+
+	if !p.IsReel || float64(p.ReelPrice) != 3 || p.ProductArrange != "Tape & Reel (TR)" {
+		t.Fatalf("unexpected reel data: reel %v, price %v, arrange %q", p.IsReel, p.ReelPrice, p.ProductArrange)
+	}
+	if p.MaxBuyNumber != -1 || p.Eccn != "EAR99" {
+		t.Fatalf("unexpected max buy %d or ECCN %q", p.MaxBuyNumber, p.Eccn)
+	}
+	if p.IsNotOverstock || p.IsForeignOnsale == nil || !*p.IsForeignOnsale {
+		t.Fatalf("unexpected order flags: not overstock %v, foreign on sale %v", p.IsNotOverstock, p.IsForeignOnsale)
+	}
+	if p.HasAlternatePart != nil {
+		t.Fatalf("expected no hasAlternatePart on a detail response, got %v", *p.HasAlternatePart)
+	}
+	if p.HasThirdPartyStock {
+		t.Fatal("expected the detail response to send hasThirdPartyStock false")
+	}
+	if p.Lifecycle() != LifecycleActive || !p.AllowsBackorder() {
+		t.Fatalf("unexpected lifecycle %q, backorder %v", p.Lifecycle(), p.AllowsBackorder())
+	}
+
+	fs := p.FlashSale
+	if fs == nil {
+		t.Fatal("expected a flash sale")
+	}
+	if fs.ValidNumber != 120000 || fs.MinOrderNumber != 100000 || fs.Split != 10000 {
+		t.Fatalf("unexpected flash sale quantities: %+v", fs)
+	}
+	if float64(fs.SellPrice) != 0.0016 || float64(fs.USDPrice) != 0.0017 || fs.SellCurrencyType != "EUR" || fs.Price() != 0.0016 {
+		t.Fatalf("unexpected flash sale price: %+v", fs)
+	}
+	if minDays, maxDays, ok := fs.DeliveryDays(); !ok || minDays != 7 || maxDays != 9 {
+		t.Fatalf("expected delivery 7-9 days, got %d-%d (%v)", minDays, maxDays, ok)
+	}
+	if !fs.IsOnsale || fs.BatchCode != "25/26+" || fs.ExpiredTime != "2026-10-13 23:59:59" {
+		t.Fatalf("unexpected flash sale state: %+v", fs)
+	}
+
+	alt := p.AlternatePartList[0]
+	if alt.ProductCode != "C106994" || alt.ProductID != 108210 {
+		t.Fatalf("unexpected first alternate: %s (%d)", alt.ProductCode, alt.ProductID)
+	}
+	if alt.StockSz != 19350 || alt.StockSz+alt.StockJs+alt.WmStockHk != alt.StockNumber {
+		t.Fatalf("unexpected alternate stock: sz %d, js %d, hk %d, total %d", alt.StockSz, alt.StockJs, alt.WmStockHk, alt.StockNumber)
+	}
+	if alt.CurrencyType != "" || alt.Currency() != "EUR" {
+		t.Fatalf("expected alternate currency EUR from the symbol, got type %q and currency %q", alt.CurrencyType, alt.Currency())
+	}
+	if alt.HasAlternatePart == nil || *alt.HasAlternatePart {
+		t.Fatalf("expected hasAlternatePart false on the alternate, got %v", alt.HasAlternatePart)
+	}
+	if alt.FlashSale != nil {
+		t.Fatalf("expected no flash sale on the alternate, got %+v", alt.FlashSale)
+	}
+	if !strings.Contains(alt.ProductImageURLBig, "/900x900/") {
+		t.Fatalf("unexpected alternate big image URL: %q", alt.ProductImageURLBig)
 	}
 }

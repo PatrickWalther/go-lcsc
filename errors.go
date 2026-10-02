@@ -3,10 +3,14 @@ package lcsc
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 var (
-	// ErrInvalidRequest indicates an invalid client request.
+	// ErrInvalidRequest indicates an invalid client request. LCSC also
+	// sends envelope code 405 for an invalid request. Two messages occur:
+	// "Invalid field. Please check again." and "Product search error."
+	// [APIError.Message] holds the message.
 	ErrInvalidRequest = errors.New("lcsc: invalid request")
 
 	// ErrNotFound indicates the requested resource was not found.
@@ -25,6 +29,11 @@ type APIError struct {
 	Code       int
 	Message    string
 	Details    string
+
+	// RetryAfter is the wait time that the server asks for in the
+	// Retry-After header. It is zero when the response has no valid
+	// Retry-After header.
+	RetryAfter time.Duration
 }
 
 func (e *APIError) Error() string {
@@ -52,7 +61,7 @@ func (e *APIError) Unwrap() error {
 	}
 
 	switch code {
-	case 400:
+	case 400, 405:
 		return ErrInvalidRequest
 	case 404:
 		return ErrNotFound

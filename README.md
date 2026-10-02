@@ -11,7 +11,7 @@ LCSC does not provide a documented public API for this data. This library uses u
 
 ## Requirements
 
-- Go 1.22+
+- Go 1.23+
 - No external dependencies (stdlib only)
 
 ## Installation
@@ -119,6 +119,12 @@ For other classifications without a product list, for example a brand name (`BRA
 
 `QueryTypes` holds the raw classification from LCSC, for example `["STANDARD", "PRODUCT_PARAM"]` or `["PRODUCT_MODEL"]`.
 
+`TotalCount` and `ActualTotalCount` give the number of matching products:
+
+- For the fallback list, `TotalCount` is the `totalRow` value of `/product/query/list`. LCSC caps this value at 5000. `ActualTotalCount` is the `actualTotalRow` value, which LCSC does not cap.
+- For the v3 product list and the exact match list, both values are equal.
+- When the client drops fallback rows, both values are the number of rows that the client keeps.
+
 ### Product Service
 
 ```go
@@ -134,10 +140,20 @@ fmt.Println(product.PdfURL)
 fmt.Println(product.GetProductURL())
 
 // Order limits and lifecycle.
-fmt.Println(product.MinBuyNumber) // minimum order quantity
-fmt.Println(product.Split)        // order multiple
-fmt.Println(product.ProductCycle) // for example "normal"
+fmt.Println(product.MinBuyNumber)      // minimum order quantity
+fmt.Println(product.Split)             // order multiple
+fmt.Println(product.ProductCycle)      // for example "normal"
+fmt.Println(product.Lifecycle())       // for example lcsc.LifecycleActive
+fmt.Println(product.AllowsBackorder()) // false when LCSC sells only the stock
 fmt.Println(product.IsPreSale)
+
+// Ids. ProductID is equal to the JLCPCB lcscComponentId.
+fmt.Println(product.ProductID, product.BrandID, product.WmCatalogID)
+
+// Prices in the response currency.
+for _, pb := range product.ProductPriceList {
+	fmt.Println(pb.Ladder, pb.Price(), product.Currency())
+}
 
 // Alternates that LCSC selects (up to five).
 for _, alt := range product.AlternatePartList {
@@ -158,11 +174,65 @@ Product fields:
 | Field | JSON | Description |
 |---|---|---|
 | `MinBuyNumber` | `minBuyNumber` | Minimum order quantity. |
+| `MaxBuyNumber` | `maxBuyNumber` | Maximum order quantity. `-1` means no maximum. |
 | `Split` | `split` | Order multiple. |
-| `ProductCycle` | `productCycle` | Lifecycle status, for example `normal`. |
+| `ProductCycle` | `productCycle` | Lifecycle status, for example `normal`, `sold_out` or `stop_product`. |
 | `IsPreSale` | `isPreSale` | `true` when LCSC sells the product as a pre-sale item. |
+| `ProductID` | `productId` | Numeric LCSC id (1877 for C1525). It is equal to the JLCPCB `lcscComponentId`. |
+| `CurrencyType` | `currencyType` | Code of the response currency. Only `Details` fills it. |
+| `BrandID` | `brandId` | LCSC id of the manufacturer. |
+| `WmCatalogID` | `wmCatalogId` | Id of the leaf category in the LCSC category tree. |
+| `ProductImageURLBig` | `productImageUrlBig` | 900x900 image. Detail responses do not send it. |
+| `IsNotOverstock` | `isNotOverstock` | `true` when LCSC refuses an order quantity above `StockNumber`. |
+| `IsForeignOnsale` | `isForeignOnsale` | `false` when LCSC does not sell the product to overseas customers. `nil` when the response does not send it. |
+| `HasThirdPartyStock` | `hasThirdPartyStock` | `true` when marketplace offers exist. Only list rows send a correct value. |
+| `HasAlternatePart` | `hasAlternatePart` | `true` when LCSC has cross-reference alternates. Only list rows send it. |
+| `IsReel`, `ReelPrice` | `isReel`, `reelPrice` | Reel option and reel fee in the response currency. |
+| `ProductArrange` | `productArrange` | Packaging, for example `Tape & Reel (TR)`. |
+| `StockSz`, `StockJs`, `WmStockHk` | `stockSz`, `stockJs`, `wmStockHk` | Stock per warehouse. The sum is `StockNumber`. Detail responses send only `stockSz`. |
+| `Eccn` | `eccn` | Export control classification number. |
+| `FlashSale` | `flashSaleProductPO` | Time-limited third-party offer, or `nil`. |
 | `AlternatePartList` | `alternatePartList` | Alternates that LCSC selects (up to five). Only `Details` fills this list. |
 | `MatchType` | `matchType` | Match code of an alternate, for example `"1"`, `"4"`, `"5"` or `"6"`. LCSC does not document the codes. The type is `FlexString`, which accepts a JSON string, number or null. |
+
+Product methods:
+
+| Method | Description |
+|---|---|
+| `Currency()` | Code of the response currency: `CurrencyType`, else the code for the price symbol, else `USD`. |
+| `Lifecycle()` | `LifecycleActive`, `LifecycleNotRecommended`, `LifecycleDiscontinued` or `LifecycleUnknown`. |
+| `AllowsBackorder()` | `false` when `IsNotOverstock` is `true` or `IsForeignOnsale` is `false`. |
+
+`Lifecycle` gives `LifecycleDiscontinued` for `stop_product`. It gives `LifecycleNotRecommended` for other cycles that are not `normal`. It gives `LifecycleActive` for `normal`, and also for an empty cycle when the record has other lifecycle fields. It gives `LifecycleUnknown` when the record has no lifecycle data.
+
+### Prices and currency
+
+LCSC supports four currencies (`lcsc.SupportedCurrencies`): USD (`$`), CNY (`￥`, U+FFE5), EUR (`€`) and HKD (`HK$`). The client sends the code of `WithCurrency` in the `currencyCode` cookie. For any other code, LCSC answers in USD.
+
+Each `PriceBreak` has three prices:
+
+| Field | JSON | Description |
+|---|---|---|
+| `ProductPrice` | `productPrice` | Unit price in USD for every currency. |
+| `USDPrice` | `usdPrice` | Unit price in USD. |
+| `CurrencyPrice` | `currencyPrice` | Unit price in the response currency. LCSC rounds it. Do not calculate it again. |
+
+`PriceBreak.Price()` returns `CurrencyPrice` when it is more than zero, else `ProductPrice`. `Product.Currency()` gives the code of that currency.
+
+```go
+client := lcsc.NewClient(lcsc.WithCurrency("EUR"))
+defer client.Close()
+
+product, err := client.Product.Details(ctx, "C2040")
+if err != nil {
+	// handle error
+}
+for _, pb := range product.ProductPriceList {
+	fmt.Printf("%d: %.4f %s (%.4f USD)\n", pb.Ladder, pb.Price(), product.Currency(), pb.USDPrice)
+}
+```
+
+`FlashSale` has its own price and currency: `SellPrice` in `SellCurrencyType`, and `USDPrice`. Show `ValidNumber` as the quantity on offer. `DeliveryDays()` gives the minimum and the maximum delivery time.
 
 Parameter fields:
 
@@ -216,6 +286,10 @@ client := lcsc.NewClient(lcsc.WithoutRetry())
 defer client.Close()
 ```
 
+The client retries transport failures, HTTP 429 and HTTP 5xx up to `MaxRetries` times. LCSC also sends error codes in the response envelope with HTTP status 200. The client retries an envelope 429 up to `MaxRetries` times, but an envelope 5xx only one time. It does not retry an envelope 405.
+
+When a response has a `Retry-After` header (seconds or an HTTP date), the client waits at least that time before the next attempt. When that time is longer than `MaxBackoff`, or when the context ends before that time, the client does not retry. It returns the error, and `APIError.RetryAfter` holds the time.
+
 ## Error Handling
 
 ```go
@@ -224,7 +298,7 @@ import "errors"
 _, err := client.Product.Details(ctx, "C99999999")
 if err != nil {
 	if errors.Is(err, lcsc.ErrInvalidRequest) {
-		// bad input
+		// bad input, also envelope code 405
 	}
 	if errors.Is(err, lcsc.ErrNotFound) {
 		// no component found
@@ -238,10 +312,26 @@ if err != nil {
 
 	var apiErr *lcsc.APIError
 	if errors.As(err, &apiErr) {
-		fmt.Println(apiErr.StatusCode, apiErr.Code, apiErr.Message)
+		fmt.Println(apiErr.StatusCode, apiErr.Code, apiErr.Message, apiErr.RetryAfter)
 	}
 }
 ```
+
+## Changes In v1.2.0
+
+All API changes are additive. Existing code compiles without changes.
+
+- `PriceBreak` has the new fields `USDPrice` and `CurrencyPrice`, and the new method `Price()`. `ProductPrice` is in USD for every currency. Use `Price()` for the price in the response currency.
+- New `SupportedCurrencies` map and `Product.Currency()` method.
+- New `Product` fields: `ProductID`, `CurrencyType`, `BrandID`, `WmCatalogID`, `ProductImageURLBig`, `IsNotOverstock`, `IsForeignOnsale`, `HasThirdPartyStock`, `HasAlternatePart`, `MaxBuyNumber`, `IsReel`, `ReelPrice`, `ProductArrange`, `StockSz`, `StockJs`, `WmStockHk`, `Eccn` and `FlashSale`.
+- New `Lifecycle` type with `Product.Lifecycle()`, and new method `Product.AllowsBackorder()`.
+- New `FlashSale` type with the methods `Price()` and `DeliveryDays()`.
+- New `SearchResponse.ActualTotalCount` field.
+- New `APIError.RetryAfter` field.
+- `FlexFloat64` decodes an empty string as 0. Before, it returned an error.
+- Envelope code 405 matches `ErrInvalidRequest`.
+- The client retries an envelope 5xx only one time. Before, it retried up to `MaxRetries` times.
+- The client honors `Retry-After` for HTTP 429 and envelope 429.
 
 ## Changes In v1.1.0
 

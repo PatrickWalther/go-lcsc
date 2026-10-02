@@ -7,10 +7,21 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
 // RetryConfig configures retry behavior.
+//
+// The client retries transport failures, HTTP 429 and HTTP 5xx responses
+// up to MaxRetries times. LCSC can also send an error code in the response
+// envelope with HTTP status 200. The client retries an envelope 429 up to
+// MaxRetries times, but an envelope 5xx only one time.
+//
+// When the server sends a Retry-After header, the client waits at least
+// that time before the next attempt. When the Retry-After time is longer
+// than MaxBackoff, the client does not retry. It returns the error, and
+// [APIError.RetryAfter] holds the time.
 type RetryConfig struct {
 	MaxRetries     int           // Maximum number of retry attempts (default 3)
 	InitialBackoff time.Duration // Initial backoff duration (default 500ms)
@@ -119,24 +130,64 @@ func pow(base, exp float64) float64 {
 	return result
 }
 
-// parseRetryAfter parses the Retry-After header value.
-// Returns the number of seconds to wait, or 0 if not parseable.
-// nolint: unused
+// retryDelay returns the wait time before the retry that follows the failed
+// attempt. It uses the exponential backoff. When the server sends a
+// Retry-After value that is longer than the backoff, it uses the Retry-After
+// value. It returns false when the Retry-After value is longer than
+// MaxBackoff. The client then does not retry and returns the error. The
+// caller can read [APIError.RetryAfter].
+func (c RetryConfig) retryDelay(attempt int, err error) (time.Duration, bool) {
+	delay := c.calculateBackoff(attempt)
+
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.RetryAfter > 0 {
+		if apiErr.RetryAfter > c.MaxBackoff {
+			return 0, false
+		}
+		if apiErr.RetryAfter > delay {
+			delay = apiErr.RetryAfter
+		}
+	}
+	return delay, true
+}
+
+// isEnvelopeServerError reports whether err is a server error that LCSC
+// sends in the response envelope with a 2xx HTTP status.
+func isEnvelopeServerError(err error, statusCode int) bool {
+	if statusCode < 200 || statusCode >= 300 {
+		return false
+	}
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.Code >= 500
+}
+
+// parseRetryAfter parses the Retry-After header value. The value is a
+// number of seconds or an HTTP date. It returns the number of seconds to
+// wait, or 0 when the value is not valid or is in the past.
 func parseRetryAfter(header string) int {
+	header = strings.TrimSpace(header)
 	if header == "" {
 		return 0
 	}
 
 	// Try parsing as seconds
 	if seconds, err := strconv.Atoi(header); err == nil {
+		if seconds < 0 {
+			return 0
+		}
 		return seconds
 	}
 
-	// Try parsing as HTTP-date
-	if t, err := time.Parse(time.RFC1123, header); err == nil {
-		seconds := int(time.Until(t).Seconds())
-		if seconds > 0 {
-			return seconds
+	// Try parsing as HTTP-date. Also accept RFC 1123 with a zone name other
+	// than GMT.
+	t, err := http.ParseTime(header)
+	if err != nil {
+		t, err = time.Parse(time.RFC1123, header)
+	}
+	if err == nil {
+		// Round up, so that the client does not retry too early.
+		if wait := time.Until(t); wait > 0 {
+			return int((wait + time.Second - 1) / time.Second)
 		}
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
 	"testing"
 	"time"
 )
@@ -213,6 +214,8 @@ func TestParseRetryAfter(t *testing.T) {
 		{"10", 10},
 		{"120", 120},
 		{"0", 0},
+		{" 7 ", 7},
+		{"-5", 0},
 	}
 
 	for _, test := range tests {
@@ -239,6 +242,16 @@ func TestParseRetryAfterHTTPDate(t *testing.T) {
 
 	if result > 0 {
 		t.Errorf("expected non-positive retry-after for past date, got %d", result)
+	}
+}
+
+// TestParseRetryAfterHTTPTimeFormat tests the IMF-fixdate form that HTTP
+// servers send.
+func TestParseRetryAfterHTTPTimeFormat(t *testing.T) {
+	header := time.Now().Add(90 * time.Second).UTC().Format(http.TimeFormat)
+	got := parseRetryAfter(header)
+	if got < 89 || got > 90 {
+		t.Errorf("expected 89 to 90 seconds for %q, got %d", header, got)
 	}
 }
 

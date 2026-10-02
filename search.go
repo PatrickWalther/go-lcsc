@@ -27,9 +27,18 @@ type SearchResponse struct {
 
 	// TotalCount is the number of matching products that LCSC reports for
 	// the product list in Products. For the exact match list, TotalCount is
-	// the length of that list. When the client drops unrelated rows from
-	// the fallback list, TotalCount is the number of rows it keeps.
+	// the length of that list. For the fallback list, TotalCount is the
+	// totalRow value of /product/query/list, which LCSC caps at 5000. When
+	// the client drops unrelated rows from the fallback list, TotalCount is
+	// the number of rows it keeps.
 	TotalCount int
+
+	// ActualTotalCount is the real number of matching products. For the
+	// fallback list, it is the actualTotalRow value of /product/query/list,
+	// which LCSC does not cap. For all other cases, it is equal to
+	// TotalCount: the v3 product list does not cap its count, and when the
+	// client drops unrelated rows, it counts the rows it keeps.
+	ActualTotalCount int
 
 	// DirectMatchCode is the LCSC product code that LCSC links directly to
 	// the keyword. It is empty when LCSC gives no direct match.
@@ -59,7 +68,12 @@ type productListRequestBody struct {
 }
 
 type productListWrapper struct {
-	TotalRow int       `json:"totalRow"`
+	// TotalRow is the number of matching products. LCSC caps it at 5000.
+	TotalRow int `json:"totalRow"`
+
+	// ActualTotalRow is the real number of matching products.
+	ActualTotalRow int `json:"actualTotalRow"`
+
 	DataList []Product `json:"dataList"`
 }
 
@@ -143,18 +157,21 @@ func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*Searc
 	case len(wrapper.ProductSearchResultVO.ProductList) > 0:
 		resp.Products = wrapper.ProductSearchResultVO.ProductList
 		resp.TotalCount = wrapper.ProductSearchResultVO.TotalCount
+		resp.ActualTotalCount = resp.TotalCount
 	case len(wrapper.ExactMatchResult) > 0:
 		resp.Products = wrapper.ExactMatchResult
 		resp.TotalCount = len(wrapper.ExactMatchResult)
+		resp.ActualTotalCount = resp.TotalCount
 	case isParametricQuery(resp.QueryTypes):
 		resp.ParametricQuery = true
 	case allowsFallback(resp.QueryTypes, resp.DirectMatchCode):
-		products, total, err := s.fallbackProducts(ctx, keyword, resp.DirectMatchCode)
+		products, total, actualTotal, err := s.fallbackProducts(ctx, keyword, resp.DirectMatchCode)
 		if err != nil {
 			return nil, err
 		}
 		resp.Products = products
 		resp.TotalCount = total
+		resp.ActualTotalCount = actualTotal
 	}
 
 	if client.cacheConfig.Enabled && client.cache != nil {
@@ -168,23 +185,30 @@ func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*Searc
 
 // fallbackProducts gets the product list from /product/query/list. It keeps
 // only the rows that match the keyword or the direct match code. It returns
-// the kept rows and the total count.
-func (s *SearchService) fallbackProducts(ctx context.Context, keyword, directMatchCode string) ([]Product, int, error) {
+// the kept rows, the total count and the actual total count. When it drops
+// rows, both counts are the number of kept rows.
+func (s *SearchService) fallbackProducts(ctx context.Context, keyword, directMatchCode string) ([]Product, int, int, error) {
 	if normalizeSearchText(keyword) == "" && normalizeSearchText(directMatchCode) == "" {
-		return nil, 0, nil
+		return nil, 0, 0, nil
 	}
 
 	var list productListWrapper
 	body := productListRequestBody{Keyword: keyword, CurrentPage: 1, PageSize: 25}
 	if err := s.client.do(ctx, http.MethodPost, "/product/query/list", nil, body, &list); err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 
 	kept := filterRelatedProducts(list.DataList, keyword, directMatchCode)
-	if len(kept) == len(list.DataList) {
-		return kept, list.TotalRow, nil
+	if len(kept) != len(list.DataList) {
+		return kept, len(kept), len(kept), nil
 	}
-	return kept, len(kept), nil
+
+	actualTotal := list.ActualTotalRow
+	if actualTotal < list.TotalRow {
+		// Older responses do not send actualTotalRow.
+		actualTotal = list.TotalRow
+	}
+	return kept, list.TotalRow, actualTotal, nil
 }
 
 // hasQueryType reports whether types contains want. The comparison ignores
