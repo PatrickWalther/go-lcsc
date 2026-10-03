@@ -84,6 +84,8 @@ func TestIntegrationSearchParametricQuery(t *testing.T) {
 // TestIntegrationSearchKeywordThenParametricRequestCount checks that
 // Keyword with SkipParametricList and then Parametric with other options
 // send 2 requests for one keyword: the v3 request and one list request.
+// The client does not retry, so a retry cannot change the count. A
+// rate-limited request fails with its own error.
 func TestIntegrationSearchKeywordThenParametricRequestCount(t *testing.T) {
 	time.Sleep(time.Second)
 	var requests int32
@@ -94,6 +96,7 @@ func TestIntegrationSearchKeywordThenParametricRequestCount(t *testing.T) {
 	client := NewClient(
 		WithHTTPClient(&http.Client{Transport: transport, Timeout: 30 * time.Second}),
 		WithRateLimit(1),
+		WithoutRetry(),
 	)
 	defer func() { _ = client.Close() }()
 

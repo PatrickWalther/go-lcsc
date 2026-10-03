@@ -711,14 +711,14 @@ if err != nil {
 - **Inferred rules.** Some rules come from live data and from the LCSC web client, not from documentation. Examples are `Product.AllowsBackorder()`, `MatchType.IsDropIn()`, the offer badges and some page size limits. The Go doc comments mark these rules as inferred.
 - **Terms of use.** The terms of the LCSC partner API forbid bulk capture of LCSC data. They also forbid hosting of LCSC data, datasheets or images for third parties. Read the LCSC terms before you store or share data from this library.
 
-## Changes In v1.2.1
+## Changes In v1.3.0
 
-All API changes are additive. Existing code compiles without changes, except code that writes `SearchRequest` as a literal without field names.
+All API changes are additive. Existing code compiles without changes, except code that writes `SearchRequest` or `SearchResponse` as a literal without field names.
 
 - New method `PriceBreak.PriceIn(responseCurrency)`. It returns the price together with its currency. When a price break has no `CurrencyPrice`, `Price()` falls back to the USD price, but `Product.Currency()` still gives the response currency. `PriceIn` then gives `USD`. New methods `Product.PriceBreakAmount(i)`, `Offer.PriceBreakAmount(i)` and `FlashSale.Amount()` use the same rule.
 - The doc comments of `PriceBreak.Price()`, `Product.Currency()`, `Offer.Currency()` and `FlashSale.Price()` tell that the fallback price is in USD.
 - `Product.ImageURL` skips a value that is not an http or https URL with a file name, for example the folder URL `https://assets.lcsc.com/images/lcsc/900x900/`. Before, it returned the folder URL.
-- `Search.Keyword` gets the route with `Search.Route` and stores it under the route cache key. `Search.Parametric` for the same keyword then does not send the v3 request again. Before, `Keyword` and then `Parametric` sent 4 requests for a parameter query.
+- `Search.Keyword` gets the route with `Search.Route` and stores it under the route cache key. `Search.Parametric` for the same keyword then does not send the v3 request again. Before, `Keyword` and then `Parametric` sent 3 requests for a parameter query with the default options, and 4 requests with other options.
 - New `SearchResponse` fields: `Route` and `CatalogIDs`.
 - New `SearchRequest.SkipParametricList` field. With it, `Keyword` sends no list request for a parameter query. `Keyword` and then `Parametric` with any options then send 2 requests.
 - `Search.Keyword` ignores a cache entry without a route, for example an entry of v1.2.0 in a shared cache, and sends the requests again.
