@@ -130,7 +130,8 @@ type Offer struct {
 
 	// ProductPriceList is the price ladder of the offer. Each break has
 	// CurrencyPrice and USDPrice. It has no ProductPrice. Use
-	// [PriceBreak.Price] and [Offer.Currency].
+	// [Offer.PriceBreakAmount] to get each price together with its
+	// currency.
 	ProductPriceList []PriceBreak `json:"productPriceList"`
 
 	// BatchCode is the date code of the offered lot, for example "26+" or
@@ -175,8 +176,14 @@ func (o *Offer) DeliveryDays() (minDays, maxDays int, ok bool) {
 	return deliveryDays(o.DeliveryTimeWayDays)
 }
 
-// Currency returns the code of the currency of [PriceBreak.Price] for the
-// offer. Offer rows send no currencyType, so Currency uses the code in
+// Currency returns the code of the response currency of the offer. The
+// CurrencyPrice of each price break is in this currency. Offer rows send no
+// ProductPrice, so [PriceBreak.Price] returns USDPrice, which is in USD,
+// when CurrencyPrice is zero. Thus do not label the result of
+// [PriceBreak.Price] with Currency. Use [Offer.PriceBreakAmount] or
+// [PriceBreak.PriceIn] to get each price together with its currency.
+//
+// Offer rows send no currencyType, so Currency uses the code in
 // [SupportedCurrencies] for the CurrencySymbol of a price break. It returns
 // "USD" when no symbol matches.
 func (o *Offer) Currency() string {
@@ -189,6 +196,19 @@ func (o *Offer) Currency() string {
 		}
 	}
 	return defaultCurrency
+}
+
+// PriceBreakAmount returns the unit price of ProductPriceList[i] and the
+// currency code of that price. It is equal to
+// ProductPriceList[i].PriceIn(o.Currency()) (see [PriceBreak.PriceIn]).
+// Thus the currency is "USD" when the price break has no CurrencyPrice.
+// PriceBreakAmount returns 0 and an empty string when o is nil or when i
+// is out of range.
+func (o *Offer) PriceBreakAmount(i int) (amount float64, currency string) {
+	if o == nil {
+		return 0, ""
+	}
+	return priceBreakAmount(o.ProductPriceList, i, o.Currency())
 }
 
 type offersBody struct {

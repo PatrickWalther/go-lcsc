@@ -193,8 +193,37 @@ func TestThirdPartyOffersCurrencyEUR(t *testing.T) {
 	if pb.Ladder != 100000 || pb.Price() != 0.0016 || pb.USDPrice != 0.0017 || pb.CurrencySymbol != "€" {
 		t.Fatalf("unexpected price break: %+v (Price %v)", pb, pb.Price())
 	}
+	if amount, currency := offer.PriceBreakAmount(0); amount != 0.0016 || currency != "EUR" {
+		t.Fatalf("expected 0.0016 EUR, got %v %s", amount, currency)
+	}
 	if offer.MinBuyNumber != 100000 || offer.Split != 10000 || offer.StockNumber != 200000 || offer.EncapStandard != "0402-X7R-16V" {
 		t.Fatalf("unexpected offer: %+v", offer)
+	}
+}
+
+func TestOfferPriceBreakAmountUSDFallback(t *testing.T) {
+	// Offer rows send no productPrice. A break without currencyPrice falls
+	// back to usdPrice, which is in USD, also when the symbol of the
+	// response currency is "€".
+	offer := &Offer{ProductPriceList: []PriceBreak{
+		{Ladder: 100000, USDPrice: 0.0017, CurrencySymbol: "€"},
+		{Ladder: 200000, USDPrice: 0.0015, CurrencyPrice: 0.0014, CurrencySymbol: "€"},
+	}}
+	if got := offer.Currency(); got != "EUR" {
+		t.Fatalf("expected the response currency EUR, got %q", got)
+	}
+	if amount, currency := offer.PriceBreakAmount(0); amount != 0.0017 || currency != "USD" {
+		t.Fatalf("expected 0.0017 USD for the fallback, got %v %s", amount, currency)
+	}
+	if amount, currency := offer.PriceBreakAmount(1); amount != 0.0014 || currency != "EUR" {
+		t.Fatalf("expected 0.0014 EUR, got %v %s", amount, currency)
+	}
+	if amount, currency := offer.PriceBreakAmount(2); amount != 0 || currency != "" {
+		t.Fatalf("expected 0 and no currency out of range, got %v %q", amount, currency)
+	}
+	var nilOffer *Offer
+	if amount, currency := nilOffer.PriceBreakAmount(0); amount != 0 || currency != "" {
+		t.Fatalf("expected 0 and no currency for a nil offer, got %v %q", amount, currency)
 	}
 }
 

@@ -123,7 +123,7 @@ type PriceBreak struct {
 
 	// ProductPrice is the unit price in USD. LCSC sends USD in this field
 	// for every currency cookie, also when CurrencySymbol is not "$". Use
-	// [PriceBreak.Price] for the price in the response currency.
+	// [PriceBreak.PriceIn] for the price together with its currency.
 	ProductPrice FlexFloat64 `json:"productPrice"`
 
 	// USDPrice is the unit price in USD. LCSC sends it as a number.
@@ -141,10 +141,18 @@ type PriceBreak struct {
 	CurrencySymbol string `json:"currencySymbol"`
 }
 
-// Price returns the unit price in the response currency. It returns
-// CurrencyPrice when CurrencyPrice is more than zero. Else it returns
-// ProductPrice, which is in USD. When ProductPrice is also zero, it returns
-// USDPrice. Offer rows (see [Offer]) send no ProductPrice.
+// Price returns the unit price. It uses the first field that applies:
+//
+//  1. CurrencyPrice, when it is more than zero. This price is in the
+//     response currency.
+//  2. ProductPrice, when it is more than zero. This price is in USD.
+//  3. USDPrice. This price is in USD.
+//
+// Thus the result is in USD when CurrencyPrice is zero, also when the
+// response currency is not USD. Do not label the result with
+// [Product.Currency] or [Offer.Currency]. Use [PriceBreak.PriceIn] to get
+// the price together with its currency. Offer rows (see [Offer]) send no
+// ProductPrice.
 func (pb PriceBreak) Price() float64 {
 	switch {
 	case pb.CurrencyPrice > 0:
@@ -154,6 +162,43 @@ func (pb PriceBreak) Price() float64 {
 	default:
 		return float64(pb.USDPrice)
 	}
+}
+
+// PriceIn returns the unit price and the currency code of that price.
+// responseCurrency is the code of the response currency, for example the
+// result of [Product.Currency] or [Offer.Currency]. PriceIn returns the
+// same amount as [PriceBreak.Price], with these currencies:
+//
+//   - For CurrencyPrice, the currency is responseCurrency in upper case.
+//     When responseCurrency is empty, PriceIn uses the code in
+//     [SupportedCurrencies] for CurrencySymbol. When no code has that
+//     symbol, it uses "USD".
+//   - For ProductPrice and USDPrice, the currency is always "USD".
+//
+// For example, a price break with ProductPrice 0.9975 and no CurrencyPrice
+// gives 0.9975 and "USD", also when responseCurrency is "EUR".
+func (pb PriceBreak) PriceIn(responseCurrency string) (amount float64, currency string) {
+	if pb.CurrencyPrice <= 0 {
+		return pb.Price(), defaultCurrency
+	}
+	currency = strings.ToUpper(strings.TrimSpace(responseCurrency))
+	if currency == "" {
+		currency = currencyForSymbol(pb.CurrencySymbol)
+	}
+	if currency == "" {
+		currency = defaultCurrency
+	}
+	return float64(pb.CurrencyPrice), currency
+}
+
+// priceBreakAmount returns the price of breaks[i] with its currency (see
+// [PriceBreak.PriceIn]). It returns 0 and an empty string when i is out of
+// range.
+func priceBreakAmount(breaks []PriceBreak, i int, responseCurrency string) (amount float64, currency string) {
+	if i < 0 || i >= len(breaks) {
+		return 0, ""
+	}
+	return breaks[i].PriceIn(responseCurrency)
 }
 
 // FlashSale is a time-limited offer from third-party stock. LCSC sends it
@@ -200,8 +245,11 @@ type FlashSale struct {
 	BatchCode string `json:"productBatchCodeEn"`
 }
 
-// Price returns the unit price of the offer. It returns SellPrice when
-// SellPrice is more than zero. Else it returns USDPrice.
+// Price returns the unit price of the offer. It returns SellPrice, which is
+// in SellCurrencyType, when SellPrice is more than zero. Else it returns
+// USDPrice, which is in USD. Thus do not label the result with
+// SellCurrencyType. Use [FlashSale.Amount] to get the price together with
+// its currency.
 func (f *FlashSale) Price() float64 {
 	if f == nil {
 		return 0
@@ -210,6 +258,28 @@ func (f *FlashSale) Price() float64 {
 		return float64(f.SellPrice)
 	}
 	return float64(f.USDPrice)
+}
+
+// Amount returns the unit price of the offer and the currency code of that
+// price. For SellPrice, the currency is SellCurrencyType in upper case. When
+// SellCurrencyType is empty, Amount uses the code in [SupportedCurrencies]
+// for CurrencySymbol, else "USD". For USDPrice, the currency is "USD". For
+// a nil offer, Amount returns 0 and an empty string.
+func (f *FlashSale) Amount() (amount float64, currency string) {
+	if f == nil {
+		return 0, ""
+	}
+	if f.SellPrice <= 0 {
+		return float64(f.USDPrice), defaultCurrency
+	}
+	currency = strings.ToUpper(strings.TrimSpace(f.SellCurrencyType))
+	if currency == "" {
+		currency = currencyForSymbol(f.CurrencySymbol)
+	}
+	if currency == "" {
+		currency = defaultCurrency
+	}
+	return float64(f.SellPrice), currency
 }
 
 // DeliveryDays returns the minimum and the maximum delivery time in days.
@@ -462,9 +532,14 @@ func (p *Product) CatalogPath() []CategoryRef {
 	return nil
 }
 
-// Currency returns the code of the response currency. [PriceBreak.Price]
-// and ReelPrice use this currency. Currency uses the first value that it
-// finds:
+// Currency returns the code of the response currency. ReelPrice and the
+// CurrencyPrice of each price break are in this currency.
+// [PriceBreak.Price] is in this currency only when CurrencyPrice is more
+// than zero. Else it is in USD. Thus do not label the result of
+// [PriceBreak.Price] with Currency. Use [Product.PriceBreakAmount] or
+// [PriceBreak.PriceIn] to get each price together with its currency.
+//
+// Currency uses the first value that it finds:
 //
 //  1. CurrencyType. Only detail responses send it.
 //  2. The code in [SupportedCurrencies] for the CurrencySymbol of a price
@@ -483,6 +558,19 @@ func (p *Product) Currency() string {
 		}
 	}
 	return defaultCurrency
+}
+
+// PriceBreakAmount returns the unit price of ProductPriceList[i] and the
+// currency code of that price. It is equal to
+// ProductPriceList[i].PriceIn(p.Currency()) (see [PriceBreak.PriceIn]).
+// Thus the currency is "USD" when the price break has no CurrencyPrice.
+// PriceBreakAmount returns 0 and an empty string when p is nil or when i
+// is out of range.
+func (p *Product) PriceBreakAmount(i int) (amount float64, currency string) {
+	if p == nil {
+		return 0, ""
+	}
+	return priceBreakAmount(p.ProductPriceList, i, p.Currency())
 }
 
 // Lifecycle returns the lifecycle state of the product. The rules follow

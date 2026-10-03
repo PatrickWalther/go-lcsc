@@ -66,9 +66,10 @@ func WithBaseURL(baseURL string) ClientOption {
 // not check the code. Use [Product.Currency] to get the currency of a
 // response.
 //
-// The currency changes [PriceBreak.CurrencyPrice], [PriceBreak.Price] and
-// [Product.ReelPrice]. [PriceBreak.ProductPrice] is in USD for every
-// currency.
+// The currency changes [PriceBreak.CurrencyPrice] and [Product.ReelPrice].
+// [PriceBreak.ProductPrice] is in USD for every currency. Use
+// [PriceBreak.PriceIn] or [Product.PriceBreakAmount] to get a price
+// together with its currency.
 func WithCurrency(currency string) ClientOption {
 	return func(c *Client) {
 		currency = strings.ToUpper(strings.TrimSpace(currency))

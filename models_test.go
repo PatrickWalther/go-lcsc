@@ -213,6 +213,73 @@ func TestPriceBreakPrice(t *testing.T) {
 	}
 }
 
+func TestPriceBreakPriceIn(t *testing.T) {
+	tests := []struct {
+		name         string
+		pb           PriceBreak
+		currency     string
+		wantAmount   float64
+		wantCurrency string
+	}{
+		{"currency price", PriceBreak{ProductPrice: 0.9975, USDPrice: 0.9975, CurrencyPrice: 0.8878, CurrencySymbol: "€"}, "EUR", 0.8878, "EUR"},
+		{"lower-case response currency", PriceBreak{CurrencyPrice: 6.9227}, " cny ", 6.9227, "CNY"},
+		{"no response currency uses the symbol", PriceBreak{CurrencyPrice: 7.9601, CurrencySymbol: "HK$"}, "", 7.9601, "HKD"},
+		{"no response currency and unknown symbol", PriceBreak{CurrencyPrice: 1.5, CurrencySymbol: "£"}, "", 1.5, "USD"},
+		// LCSC sent the response currency EUR, but no currencyPrice. The
+		// price falls back to productPrice, which is in USD.
+		{"product price fallback is USD", PriceBreak{ProductPrice: 0.9975, USDPrice: 0.9975}, "EUR", 0.9975, "USD"},
+		// Offer rows send no productPrice.
+		{"offer row without currency price is USD", PriceBreak{USDPrice: 0.0017, CurrencySymbol: "€"}, "EUR", 0.0017, "USD"},
+		{"offer row", PriceBreak{USDPrice: 0.0017, CurrencyPrice: 0.0016, CurrencySymbol: "€"}, "EUR", 0.0016, "EUR"},
+		{"no price", PriceBreak{}, "EUR", 0, "USD"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			amount, currency := tt.pb.PriceIn(tt.currency)
+			if amount != tt.wantAmount || currency != tt.wantCurrency {
+				t.Fatalf("expected %v %s, got %v %s", tt.wantAmount, tt.wantCurrency, amount, currency)
+			}
+			if amount != tt.pb.Price() {
+				t.Fatalf("expected the amount of Price %v, got %v", tt.pb.Price(), amount)
+			}
+		})
+	}
+}
+
+func TestProductPriceBreakAmountUSDFallback(t *testing.T) {
+	// The response currency is EUR, but the first price break has no
+	// currencyPrice. Price gives the USD productPrice, and Currency still
+	// gives EUR. PriceBreakAmount must label the amount USD.
+	raw := `{"currencyType":"EUR","productPriceList":[{"ladder":1,"productPrice":"0.9975","usdPrice":0.9975},{"ladder":10,"productPrice":"0.8","usdPrice":0.8,"currencyPrice":0.712,"currencySymbol":"€"}]}`
+
+	var p Product
+	if err := json.Unmarshal([]byte(raw), &p); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if got := p.Currency(); got != "EUR" {
+		t.Fatalf("expected the response currency EUR, got %q", got)
+	}
+	if got := p.ProductPriceList[0].Price(); got != 0.9975 {
+		t.Fatalf("expected Price 0.9975, got %v", got)
+	}
+
+	if amount, currency := p.PriceBreakAmount(0); amount != 0.9975 || currency != "USD" {
+		t.Fatalf("expected 0.9975 USD for the fallback, got %v %s", amount, currency)
+	}
+	if amount, currency := p.PriceBreakAmount(1); amount != 0.712 || currency != "EUR" {
+		t.Fatalf("expected 0.712 EUR, got %v %s", amount, currency)
+	}
+	for _, i := range []int{-1, 2} {
+		if amount, currency := p.PriceBreakAmount(i); amount != 0 || currency != "" {
+			t.Fatalf("index %d: expected 0 and no currency, got %v %q", i, amount, currency)
+		}
+	}
+	var nilProduct *Product
+	if amount, currency := nilProduct.PriceBreakAmount(0); amount != 0 || currency != "" {
+		t.Fatalf("expected 0 and no currency for a nil product, got %v %q", amount, currency)
+	}
+}
+
 func TestSupportedCurrencies(t *testing.T) {
 	want := map[string]string{"USD": "$", "CNY": "\uffe5", "EUR": "\u20ac", "HKD": "HK$"}
 	if len(SupportedCurrencies) != len(want) {
@@ -388,5 +455,34 @@ func TestFlashSalePriceAndDeliveryDays(t *testing.T) {
 	oneValue := &FlashSale{DeliveryTimeWayDays: []int{5}}
 	if minDays, maxDays, ok := oneValue.DeliveryDays(); !ok || minDays != 5 || maxDays != 5 {
 		t.Fatalf("expected 5-5 days, got %d-%d (%v)", minDays, maxDays, ok)
+	}
+}
+
+func TestFlashSaleAmount(t *testing.T) {
+	tests := []struct {
+		name         string
+		sale         *FlashSale
+		wantAmount   float64
+		wantCurrency string
+	}{
+		{"nil offer", nil, 0, ""},
+		{"sell price", &FlashSale{SellPrice: 0.0016, USDPrice: 0.0017, SellCurrencyType: "EUR", CurrencySymbol: "€"}, 0.0016, "EUR"},
+		{"lower-case sell currency", &FlashSale{SellPrice: 0.012, SellCurrencyType: " cny "}, 0.012, "CNY"},
+		{"sell price with symbol only", &FlashSale{SellPrice: 0.02, CurrencySymbol: "HK$"}, 0.02, "HKD"},
+		{"sell price without currency", &FlashSale{SellPrice: 0.02}, 0.02, "USD"},
+		// The sell currency is EUR, but the offer has no sell price. The
+		// price falls back to usdPrice, which is in USD.
+		{"USD fallback", &FlashSale{USDPrice: 0.0017, SellCurrencyType: "EUR", CurrencySymbol: "€"}, 0.0017, "USD"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			amount, currency := tt.sale.Amount()
+			if amount != tt.wantAmount || currency != tt.wantCurrency {
+				t.Fatalf("expected %v %q, got %v %q", tt.wantAmount, tt.wantCurrency, amount, currency)
+			}
+			if amount != tt.sale.Price() {
+				t.Fatalf("expected the amount of Price %v, got %v", tt.sale.Price(), amount)
+			}
+		})
 	}
 }

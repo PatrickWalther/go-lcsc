@@ -148,6 +148,9 @@ func TestIntegrationProductDetailsCurrencyEUR(t *testing.T) {
 		if pb.Price() != float64(pb.CurrencyPrice) {
 			t.Fatalf("ladder %d: expected Price to return currencyPrice %v, got %v", pb.Ladder, pb.CurrencyPrice, pb.Price())
 		}
+		if amount, currency := pb.PriceIn(product.Currency()); amount != float64(pb.CurrencyPrice) || currency != "EUR" {
+			t.Fatalf("ladder %d: expected PriceIn to return %v EUR, got %v %s", pb.Ladder, pb.CurrencyPrice, amount, currency)
+		}
 		if pb.USDPrice != pb.ProductPrice {
 			t.Errorf("ladder %d: expected usdPrice %v to equal productPrice %v", pb.Ladder, pb.USDPrice, pb.ProductPrice)
 		}
