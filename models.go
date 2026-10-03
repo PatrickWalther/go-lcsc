@@ -409,9 +409,10 @@ type Product struct {
 	ProductImageURLBig string `json:"productImageUrlBig"`
 
 	// IsNotOverstock is true when LCSC refuses an order quantity above
-	// StockNumber. In the observed data, LCSC sets it exactly when
-	// ProductCycle is not "normal". The LCSC site shows the "Discontinued"
-	// or the "Not recommended for new" label only when it is true.
+	// StockNumber. LCSC still sells the product up to StockNumber. In the
+	// observed data, LCSC sets it exactly when ProductCycle is not
+	// "normal". The LCSC site shows the "Discontinued" or the "Not
+	// recommended for new" label only when it is true.
 	IsNotOverstock bool `json:"isNotOverstock"`
 
 	// IsForeignOnsale is false when LCSC does not sell the product to
@@ -616,6 +617,13 @@ func (p *Product) Lifecycle() Lifecycle {
 // false when IsForeignOnsale is false, because LCSC then does not sell the
 // product to overseas customers. LCSC does not document this rule. It comes
 // from the behavior of the LCSC site (inferred).
+//
+// A false result does not mean that the product cannot be ordered. When
+// IsNotOverstock is true, LCSC still sells the product up to StockNumber.
+// For example, C6119803 has ProductCycle "stop_product" and
+// IsNotOverstock true, but LCSC sells its remaining stock. LCSC sells a
+// quantity up to StockNumber when IsForeignOnsale is not false. It sells a
+// larger quantity only when AllowsBackorder returns true.
 func (p *Product) AllowsBackorder() bool {
 	if p == nil || p.IsNotOverstock {
 		return false
