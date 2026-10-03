@@ -103,11 +103,15 @@ func ImageURLAtSize(raw string, size ImageSize) string {
 }
 
 // ImageURL returns the URL of the product image at size. It uses the first
-// image URL that it finds: ProductImageURLBig, the first entry of
-// ProductImages, then ProductImageURL. It changes the size with
-// [ImageURLAtSize]. A URL that ImageURLAtSize cannot change comes back with
-// no change. ImageURL returns an empty string when the product has no
-// image.
+// image URL that it finds: ProductImageURLBig, the entries of
+// ProductImages, then ProductImageURL. It skips a value that is not an
+// http or https URL with a file name. Some records send a folder URL
+// without a file name, for example
+// "https://assets.lcsc.com/images/lcsc/900x900/".
+//
+// ImageURL changes the size with [ImageURLAtSize]. A URL that
+// ImageURLAtSize cannot change comes back with no change. ImageURL returns
+// an empty string when the product has no image.
 func (p *Product) ImageURL(size ImageSize) string {
 	if p == nil {
 		return ""
@@ -116,11 +120,24 @@ func (p *Product) ImageURL(size ImageSize) string {
 	candidates = append(candidates, p.ProductImages...)
 	candidates = append(candidates, p.ProductImageURL)
 	for _, candidate := range candidates {
-		if candidate = strings.TrimSpace(candidate); candidate != "" {
+		if candidate = strings.TrimSpace(candidate); hasFileName(candidate) {
 			return ImageURLAtSize(candidate, size)
 		}
 	}
 	return ""
+}
+
+// hasFileName reports whether raw is an http or https URL with a host and
+// a file name. A path that is empty or that ends with "/" has no file name.
+func hasFileName(raw string) bool {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Host == "" {
+		return false
+	}
+	if scheme := strings.ToLower(u.Scheme); scheme != "http" && scheme != "https" {
+		return false
+	}
+	return u.Path != "" && !strings.HasSuffix(u.Path, "/")
 }
 
 const (

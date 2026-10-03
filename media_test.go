@@ -104,6 +104,26 @@ func TestProductImageURL(t *testing.T) {
 		{"big image first", &Product{ProductImageURL: "https://assets.lcsc.com/images/lcsc/96x96/a.jpg", ProductImageURLBig: "https://assets.lcsc.com/images/lcsc/900x900/b.jpg"}, "https://assets.lcsc.com/images/lcsc/224x224/b.jpg"},
 		{"small image only", &Product{ProductImageURL: "https://assets.lcsc.com/images/lcsc/96x96/a.jpg"}, "https://assets.lcsc.com/images/lcsc/224x224/a.jpg"},
 		{"other host", &Product{ProductImageURL: "https://example.com/a.jpg"}, "https://example.com/a.jpg"},
+		// Some records send a folder URL without a file name.
+		{
+			"folder URL in big image",
+			&Product{ProductImageURLBig: "https://assets.lcsc.com/images/lcsc/900x900/", ProductImageURL: "https://assets.lcsc.com/images/lcsc/96x96/a.jpg"},
+			"https://assets.lcsc.com/images/lcsc/224x224/a.jpg",
+		},
+		{
+			"folder URL in the first detail image",
+			&Product{ProductImages: []string{"https://assets.lcsc.com/images/lcsc/900x900/", "https://assets.lcsc.com/images/lcsc/900x900/b.jpg"}},
+			"https://assets.lcsc.com/images/lcsc/224x224/b.jpg",
+		},
+		{
+			"folder URLs only",
+			&Product{ProductImageURLBig: "https://assets.lcsc.com/images/lcsc/900x900/", ProductImages: []string{"https://assets.lcsc.com/images/lcsc/900x900/"}, ProductImageURL: "https://assets.lcsc.com/images/lcsc/96x96/"},
+			"",
+		},
+		{"host without path", &Product{ProductImageURL: "https://assets.lcsc.com"}, ""},
+		{"not a URL", &Product{ProductImageURLBig: "--", ProductImageURL: "https://assets.lcsc.com/images/lcsc/96x96/a.jpg"}, "https://assets.lcsc.com/images/lcsc/224x224/a.jpg"},
+		{"relative path", &Product{ProductImageURL: "/images/lcsc/96x96/a.jpg"}, ""},
+		{"other scheme", &Product{ProductImageURL: "ftp://assets.lcsc.com/images/lcsc/96x96/a.jpg"}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
