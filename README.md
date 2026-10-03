@@ -130,6 +130,41 @@ For other classifications without a product list, for example a brand name (`BRA
 - For the v3 product list and the exact match list, both values are equal.
 - When the client drops fallback rows, both values are the number of rows that the client keeps.
 
+`Route` holds the route of the keyword (see [Parametric Search](#parametric-search)). It is not `nil` when `Keyword` returns no error. `Route.LeafCatalogIDs(n)` gives the leaf category ids of the route. For a parameter query, `CatalogIDs` holds the leaf category ids of the list request.
+
+`Keyword` gets the route with `Route`. Thus `Keyword`, `Route` and `Parametric` use one cache entry for the route of a keyword, and `Parametric` for the same keyword does not send the v3 request again. With the cache, `Keyword` and then `Parametric` send these requests for a parameter query:
+
+| Calls | Requests |
+|---|---|
+| `Keyword`, then `Parametric` with the default options | 2. `Parametric` gets the route and the list from the cache. |
+| `Keyword` with `SkipParametricList: true`, then `Parametric` with any options | 2. `Keyword` sends only the v3 request. `Parametric` sends the list request with its options. |
+| `Keyword`, then `Parametric` with other options | 3 |
+
+```go
+resp, err := client.Search.Keyword(ctx, &lcsc.SearchRequest{
+	Keyword:            "10k 0603",
+	SkipParametricList: true,
+})
+if err != nil {
+	// handle error
+}
+if resp.ParametricQuery {
+	// Parametric uses the cached route and sends one list request.
+	list, err := client.Search.Parametric(ctx, "10k 0603", &lcsc.ParametricOptions{
+		MaxCatalogs: 1,
+		InStock:     true,
+		Sort:        lcsc.SortStock,
+		Desc:        true,
+	})
+	if err != nil {
+		// handle error
+	}
+	fmt.Println(list.CatalogIDs, list.ActualTotalCount)
+}
+```
+
+With `SkipParametricList`, `Keyword` returns no products for a parameter query. For other keywords, the field has no effect.
+
 ### Parametric Search
 
 `client.Search.Parametric` returns products for a parameter or package query, for example `100nF 0402` or `10k 0603`. LCSC cannot answer such a query with a keyword list.
@@ -289,15 +324,16 @@ fmt.Println(product.MinBuyNumber)      // minimum order quantity
 fmt.Println(product.Split)             // order multiple
 fmt.Println(product.ProductCycle)      // for example "normal"
 fmt.Println(product.Lifecycle())       // for example lcsc.LifecycleActive
-fmt.Println(product.AllowsBackorder()) // false when LCSC sells only the stock
+fmt.Println(product.AllowsBackorder()) // false when LCSC sells only up to StockNumber
 fmt.Println(product.IsPreSale)
 
 // Ids. ProductID is equal to the JLCPCB lcscComponentId.
 fmt.Println(product.ProductID, product.BrandID, product.WmCatalogID)
 
-// Prices in the response currency.
-for _, pb := range product.ProductPriceList {
-	fmt.Println(pb.Ladder, pb.Price(), product.Currency())
+// Prices with their currency.
+for i, pb := range product.ProductPriceList {
+	amount, currency := product.PriceBreakAmount(i)
+	fmt.Println(pb.Ladder, amount, currency)
 }
 
 // Alternates that LCSC selects (up to five).
@@ -331,7 +367,7 @@ Product fields:
 | `ParentCatalogList` | `parentCatalogList` | Parent categories, from the root category down. Only detail responses send it. |
 | `FirstWmCatalogID` to `SixthWmCatalogID`, with the `...NameEn` fields | `firstWmCatalogId` to `sixthWmCatalogId` | Category path of a list row, from the root category down. Only list rows send it. |
 | `ProductImageURLBig` | `productImageUrlBig` | 900x900 image. Detail responses do not send it. |
-| `IsNotOverstock` | `isNotOverstock` | `true` when LCSC refuses an order quantity above `StockNumber`. In the observed data, it is `true` exactly when `ProductCycle` is not `normal`. |
+| `IsNotOverstock` | `isNotOverstock` | `true` when LCSC refuses an order quantity above `StockNumber`. LCSC still sells the product up to `StockNumber`. In the observed data, it is `true` exactly when `ProductCycle` is not `normal`. |
 | `IsForeignOnsale` | `isForeignOnsale` | `false` when LCSC does not sell the product to overseas customers. `nil` when the response does not send it. |
 | `HasThirdPartyStock` | `hasThirdPartyStock` | `true` when marketplace offers exist. Only list rows send a correct value. |
 | `HasAlternatePart` | `hasAlternatePart` | `true` when LCSC has cross-reference alternates. Only list rows send it. |
@@ -348,9 +384,10 @@ Product methods:
 
 | Method | Description |
 |---|---|
-| `Currency()` | Code of the response currency: `CurrencyType`, else the code for the price symbol, else `USD`. |
+| `Currency()` | Code of the response currency: `CurrencyType`, else the code for the price symbol, else `USD`. `CurrencyPrice` and `ReelPrice` are in this currency. `PriceBreak.Price()` is not always in this currency. See [Prices and Currency](#prices-and-currency). |
+| `PriceBreakAmount(i)` | Unit price of `ProductPriceList[i]` and the currency code of that price. The currency is `USD` when the price break has no `CurrencyPrice`. |
 | `Lifecycle()` | `LifecycleActive`, `LifecycleNotRecommended`, `LifecycleDiscontinued` or `LifecycleUnknown`. |
-| `AllowsBackorder()` | `false` when `IsNotOverstock` is `true` or `IsForeignOnsale` is `false`. |
+| `AllowsBackorder()` | `true` when LCSC accepts an order quantity above `StockNumber`. `false` when `IsNotOverstock` is `true` or `IsForeignOnsale` is `false`. See the rule below the table. |
 | `Match()` | `MatchType` as a typed `MatchType` value, with `Label()` and `IsDropIn()`. |
 | `CatalogPath()` | Category path from the root category to the leaf category. It uses `ParentCatalogList` (detail) or the list-row path fields. |
 | `SimilarFilter(relax...)` | Filter for products like this product. See [Parametric Search](#parametric-search). |
@@ -362,6 +399,8 @@ Product methods:
 - `LifecycleNotRecommended` when `IsNotOverstock` is `true` and the cycle is not `stop_product`, for example for `sold_out`.
 - `LifecycleActive` for `normal` and `on_sale`, and also for an empty cycle when the record has other lifecycle fields.
 - `LifecycleUnknown` when the record has no lifecycle data. Also for another cycle when `IsNotOverstock` is `false`. The LCSC site shows no label for such a product, but the observed data has no such record.
+
+`AllowsBackorder() == false` does not mean that the product cannot be ordered. When `IsNotOverstock` is `true`, LCSC still sells the product up to `StockNumber`. For example, C6119803 has the cycle `stop_product`, but LCSC sells its remaining stock. LCSC sells a quantity up to `StockNumber` when `IsForeignOnsale` is not `false`. It sells a larger quantity only when `AllowsBackorder()` is `true`.
 
 `Details` changes the product code to upper case, because LCSC finds no product for a lower-case code.
 
@@ -385,7 +424,18 @@ Each `PriceBreak` has three prices:
 | `USDPrice` | `usdPrice` | Unit price in USD. |
 | `CurrencyPrice` | `currencyPrice` | Unit price in the response currency. LCSC rounds it. Do not calculate it again. |
 
-`PriceBreak.Price()` returns `CurrencyPrice` when it is more than zero. Else it returns `ProductPrice`, and when that is also zero, `USDPrice`. `Product.Currency()` gives the code of the `Price()` currency.
+`PriceBreak.Price()` returns `CurrencyPrice` when it is more than zero. Else it returns `ProductPrice`, and when that is also zero, `USDPrice`. Thus `Price()` is in USD when `CurrencyPrice` is zero, also when the response currency is not USD. `Product.Currency()` gives the response currency and not the currency of `Price()`. Do not label `Price()` with `Currency()`.
+
+To get a price together with its currency, use one of these methods:
+
+| Method | Result |
+|---|---|
+| `PriceBreak.PriceIn(responseCurrency)` | The amount of `Price()`, and `responseCurrency` for `CurrencyPrice` or `USD` for `ProductPrice` and `USDPrice`. When `responseCurrency` is empty, it uses the code for `CurrencySymbol`. |
+| `Product.PriceBreakAmount(i)` | `ProductPriceList[i].PriceIn(product.Currency())`. |
+| `Offer.PriceBreakAmount(i)` | `ProductPriceList[i].PriceIn(offer.Currency())`. |
+| `FlashSale.Amount()` | `SellPrice` in `SellCurrencyType`, or `USDPrice` in `USD`. |
+
+For example, a detail response with `currencyType` `EUR` and the price break `{"ladder":1,"productPrice":"0.9975","usdPrice":0.9975}` gives `Price()` 0.9975 and `Currency()` `EUR`, but `PriceBreakAmount(0)` gives 0.9975 `USD`.
 
 ```go
 client := lcsc.NewClient(lcsc.WithCurrency("EUR"))
@@ -395,12 +445,13 @@ product, err := client.Product.Details(ctx, "C2040")
 if err != nil {
 	// handle error
 }
-for _, pb := range product.ProductPriceList {
-	fmt.Printf("%d: %.4f %s (%.4f USD)\n", pb.Ladder, pb.Price(), product.Currency(), pb.USDPrice)
+for i, pb := range product.ProductPriceList {
+	amount, currency := product.PriceBreakAmount(i)
+	fmt.Printf("%d: %.4f %s (%.4f USD)\n", pb.Ladder, amount, currency, pb.USDPrice)
 }
 ```
 
-`FlashSale` has its own price and currency: `SellPrice` in `SellCurrencyType`, and `USDPrice`. Show `ValidNumber` as the quantity on offer. `DeliveryDays()` gives the minimum and the maximum delivery time.
+`FlashSale` has its own price and currency: `SellPrice` in `SellCurrencyType`, and `USDPrice`. `FlashSale.Price()` returns `USDPrice` when `SellPrice` is zero, so use `FlashSale.Amount()` to get the currency. Show `ValidNumber` as the quantity on offer. `DeliveryDays()` gives the minimum and the maximum delivery time.
 
 ### Alternate Service
 
@@ -483,8 +534,9 @@ for _, offer := range resp.Offers {
 	minDays, maxDays, _ := offer.DeliveryDays()
 	fmt.Printf("%s: %d pcs, MOQ %d, multiple %d, %d-%d days\n",
 		offer.Source, offer.StockNumber, offer.MinBuyNumber, offer.Split, minDays, maxDays)
-	for _, pb := range offer.ProductPriceList {
-		fmt.Printf("  %d+: %.4f %s\n", pb.Ladder, pb.Price(), offer.Currency())
+	for i, pb := range offer.ProductPriceList {
+		amount, currency := offer.PriceBreakAmount(i)
+		fmt.Printf("  %d+: %.4f %s\n", pb.Ladder, amount, currency)
 	}
 }
 
@@ -513,12 +565,12 @@ Offer fields:
 | `MinBuyNumber` | `minBuyNumber` | Minimum order quantity of the offer. |
 | `Split` | `split` | Order multiple of the offer. |
 | `DeliveryTimeWayDays` | `deliveryTimeWayDays` | Minimum and maximum delivery time in days. Use `DeliveryDays()`. |
-| `ProductPriceList` | `productPriceList` | Price ladder with `CurrencyPrice` and `USDPrice`, but no `ProductPrice`. Use `PriceBreak.Price()` and `Offer.Currency()`. |
+| `ProductPriceList` | `productPriceList` | Price ladder with `CurrencyPrice` and `USDPrice`, but no `ProductPrice`. Use `Offer.PriceBreakAmount(i)` to get each price with its currency. |
 | `BatchCode` | `batchNumberEn` | Date code of the lot, for example `26+` or `2551`. |
 | `IsOnsale` | `isOnsale` | `true` when the offer is open. |
 | `IsPriceFirst`, `IsStockFirst`, `IsDeliveryTimeFirst` | same names | Badges for the best price, the most stock and the shortest delivery time. The meaning comes from the names and the data (inferred). LCSC sets the badges only for a `ProductCode` request. For a `Keyword` request, all offers have `false`. |
 
-Offer rows send no `currencyType`, so `Offer.Currency()` gets the currency code from the price symbol. The offers are information only. JLCPCB pre-orders do not use them (inferred).
+Offer rows send no `currencyType`, so `Offer.Currency()` gets the currency code from the price symbol. A price break without `CurrencyPrice` gives `USDPrice` in `USD` (see [Prices and Currency](#prices-and-currency)). The offers are information only. JLCPCB pre-orders do not use them (inferred).
 
 `HasStock` sends the request to `/search/has/third/stock`. It answers `false` for an unknown product code. A detail response sends `HasThirdPartyStock` as `false` also for products with offers. Use `HasStock`, or the `HasThirdPartyStock` field of a list row.
 
@@ -544,6 +596,8 @@ thumb := product.ImageURL(lcsc.ImageSizeMedium) // first product image at 224x22
 | `ImageSizeLarge` | 900x900 | `ProductImages` of detail responses, `ProductImageURLBig` of list rows |
 
 `ImageURLAtSize` returns the URL with no change when the host is not `assets.lcsc.com`, when the path does not start with `/images/`, or when the path has no size segment.
+
+`Product.ImageURL` uses the first image URL in this order: `ProductImageURLBig`, the entries of `ProductImages`, then `ProductImageURL`. It skips a value that is not an http or https URL with a file name. Some records send a folder URL without a file name, for example `https://assets.lcsc.com/images/lcsc/900x900/`.
 
 `client.Product.ResolveDatasheetURL` returns a URL that sends the datasheet PDF file. LCSC and JLCPCB use several URL forms for one datasheet:
 
@@ -657,6 +711,19 @@ if err != nil {
 - **Inferred rules.** Some rules come from live data and from the LCSC web client, not from documentation. Examples are `Product.AllowsBackorder()`, `MatchType.IsDropIn()`, the offer badges and some page size limits. The Go doc comments mark these rules as inferred.
 - **Terms of use.** The terms of the LCSC partner API forbid bulk capture of LCSC data. They also forbid hosting of LCSC data, datasheets or images for third parties. Read the LCSC terms before you store or share data from this library.
 
+## Changes In v1.2.1
+
+All API changes are additive. Existing code compiles without changes, except code that writes `SearchRequest` as a literal without field names.
+
+- New method `PriceBreak.PriceIn(responseCurrency)`. It returns the price together with its currency. When a price break has no `CurrencyPrice`, `Price()` falls back to the USD price, but `Product.Currency()` still gives the response currency. `PriceIn` then gives `USD`. New methods `Product.PriceBreakAmount(i)`, `Offer.PriceBreakAmount(i)` and `FlashSale.Amount()` use the same rule.
+- The doc comments of `PriceBreak.Price()`, `Product.Currency()`, `Offer.Currency()` and `FlashSale.Price()` tell that the fallback price is in USD.
+- `Product.ImageURL` skips a value that is not an http or https URL with a file name, for example the folder URL `https://assets.lcsc.com/images/lcsc/900x900/`. Before, it returned the folder URL.
+- `Search.Keyword` gets the route with `Search.Route` and stores it under the route cache key. `Search.Parametric` for the same keyword then does not send the v3 request again. Before, `Keyword` and then `Parametric` sent 4 requests for a parameter query.
+- New `SearchResponse` fields: `Route` and `CatalogIDs`.
+- New `SearchRequest.SkipParametricList` field. With it, `Keyword` sends no list request for a parameter query. `Keyword` and then `Parametric` with any options then send 2 requests.
+- `Search.Keyword` ignores a cache entry without a route, for example an entry of v1.2.0 in a shared cache, and sends the requests again.
+- The doc comment of `Product.AllowsBackorder()` tells that `false` does not mean "not orderable". LCSC still sells a product with `IsNotOverstock` up to `StockNumber`, for example C6119803.
+
 ## Changes In v1.2.0
 
 All API changes are additive. Existing code compiles without changes.
@@ -731,7 +798,7 @@ go test ./...
 go test -tags=integration -run Integration ./...
 ```
 
-The integration tests send about 25 read-only requests to the live LCSC endpoints.
+The integration tests send about 27 read-only requests to the live LCSC endpoints.
 
 ## License
 
