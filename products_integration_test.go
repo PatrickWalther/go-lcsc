@@ -10,7 +10,9 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -67,9 +69,64 @@ func TestIntegrationSearchParametricQuery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search failed: %v", err)
 	}
-	t.Logf("query types %v, parametric %v, %d products (actual total %d)", resp.QueryTypes, resp.ParametricQuery, len(resp.Products), resp.ActualTotalCount)
+	t.Logf("query types %v, parametric %v, %d products (actual total %d), list categories %v", resp.QueryTypes, resp.ParametricQuery, len(resp.Products), resp.ActualTotalCount, resp.CatalogIDs)
+	if resp.Route == nil {
+		t.Fatal("expected the route in the response")
+	}
 	if resp.ParametricQuery && len(resp.Products) == 0 {
 		t.Fatal("expected products from the route categories for a parametric query")
+	}
+	if resp.ParametricQuery && len(resp.CatalogIDs) == 0 {
+		t.Fatal("expected the leaf category ids of the list request")
+	}
+}
+
+// TestIntegrationSearchKeywordThenParametricRequestCount checks that
+// Keyword with SkipParametricList and then Parametric with other options
+// send 2 requests for one keyword: the v3 request and one list request.
+func TestIntegrationSearchKeywordThenParametricRequestCount(t *testing.T) {
+	time.Sleep(time.Second)
+	var requests int32
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		atomic.AddInt32(&requests, 1)
+		return http.DefaultTransport.RoundTrip(req)
+	})
+	client := NewClient(
+		WithHTTPClient(&http.Client{Transport: transport, Timeout: 30 * time.Second}),
+		WithRateLimit(1),
+	)
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	resp, err := client.Search.Keyword(ctx, &SearchRequest{Keyword: "100nF 0402", SkipParametricList: true})
+	t.Logf("keyword \"100nF 0402\": %v, error %v", time.Since(start), err)
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+	if !resp.ParametricQuery || resp.Route == nil {
+		t.Fatalf("expected a parametric query with a route, got parametric %v and route %v", resp.ParametricQuery, resp.Route)
+	}
+	if len(resp.Products) != 0 {
+		t.Fatalf("expected no products with SkipParametricList, got %d", len(resp.Products))
+	}
+
+	start = time.Now()
+	list, err := client.Search.Parametric(ctx, "100nF 0402", &ParametricOptions{MaxCatalogs: 1, InStock: true, Sort: SortStock, Desc: true, PageSize: 10})
+	t.Logf("parametric \"100nF 0402\": %v, error %v", time.Since(start), err)
+	if err != nil {
+		t.Fatalf("parametric failed: %v", err)
+	}
+	if len(list.Products) == 0 {
+		t.Fatal("expected at least one product for \"100nF 0402\"")
+	}
+	if want := resp.Route.LeafCatalogIDs(1); !reflect.DeepEqual(list.CatalogIDs, want) {
+		t.Errorf("expected the best category %v of the route, got %v", want, list.CatalogIDs)
+	}
+	if got := atomic.LoadInt32(&requests); got != 2 {
+		t.Fatalf("expected 2 requests, got %d", got)
 	}
 }
 

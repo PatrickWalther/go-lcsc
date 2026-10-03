@@ -634,13 +634,243 @@ func TestFilterRelatedProductsKeywordIsDirectCode(t *testing.T) {
 }
 
 func TestCacheKeyForSearchKeepsCase(t *testing.T) {
-	if cacheKeyForSearch("USD", "1m 0603") != cacheKeyForSearch("usd", " 1m 0603 ") {
+	if cacheKeyForSearch("USD", "1m 0603", false) != cacheKeyForSearch("usd", " 1m 0603 ", false) {
 		t.Fatal("expected the same key for the same keyword with spaces at the ends")
 	}
-	if cacheKeyForSearch("USD", "1m 0603") == cacheKeyForSearch("USD", "1M 0603") {
+	if cacheKeyForSearch("USD", "1m 0603", false) == cacheKeyForSearch("USD", "1M 0603", false) {
 		t.Fatal("expected different keys for keywords with a different case")
 	}
-	if cacheKeyForSearch("USD", "1m 0603") == cacheKeyForSearch("EUR", "1m 0603") {
+	if cacheKeyForSearch("USD", "1m 0603", false) == cacheKeyForSearch("EUR", "1m 0603", false) {
 		t.Fatal("expected different keys for different currencies")
+	}
+	if cacheKeyForSearch("USD", "1m 0603", true) == cacheKeyForSearch("USD", "1m 0603", false) {
+		t.Fatal("expected different keys with and without SkipParametricList")
+	}
+}
+
+// countingParametricClient returns a client with a cache that answers the v3
+// request and the list request for "10k 0603". It records the path and the
+// body of each request.
+func countingParametricClient(t *testing.T, cache Cache, paths *[]string, bodies *[]map[string]interface{}) *Client {
+	t.Helper()
+	v3 := mustReadFixture(t, "search_v3_parametric_10k_0603.json")
+	list := mustReadFixture(t, "query_list_1199_10k_0603.json")
+	return newCachedTestClient(cache, func(req *http.Request) (*http.Response, error) {
+		*paths = append(*paths, req.URL.Path)
+		*bodies = append(*bodies, decodeJSONBody(t, req))
+		switch req.URL.Path {
+		case testSearchV3Path:
+			return jsonResponse(http.StatusOK, v3), nil
+		case testQueryListPath:
+			return jsonResponse(http.StatusOK, list), nil
+		default:
+			t.Errorf("unexpected request to %s", req.URL.Path)
+			return jsonResponse(http.StatusNotFound, ""), nil
+		}
+	})
+}
+
+func TestSearchKeywordThenParametricRequestCount(t *testing.T) {
+	const keyword = "10k 0603"
+	ownOptions := &ParametricOptions{MaxCatalogs: 1, InStock: true, Sort: SortStock, Desc: true, PageSize: 50}
+
+	tests := []struct {
+		name      string
+		skipList  bool
+		opts      *ParametricOptions
+		wantPaths []string
+	}{
+		// Parametric gets the route and the list from the cache.
+		{"default options", false, nil, []string{testSearchV3Path, testQueryListPath}},
+		// Parametric gets the route from the cache and sends its own list.
+		{"skip list and own options", true, ownOptions, []string{testSearchV3Path, testQueryListPath}},
+		// Keyword sends the default list. Parametric sends its own list.
+		{"own options", false, ownOptions, []string{testSearchV3Path, testQueryListPath, testQueryListPath}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var paths []string
+			var bodies []map[string]interface{}
+			cache := newRecordingCache()
+			client := countingParametricClient(t, cache, &paths, &bodies)
+			defer func() { _ = client.Close() }()
+
+			ctx := context.Background()
+			resp, err := client.Search.Keyword(ctx, &SearchRequest{Keyword: keyword, SkipParametricList: tt.skipList})
+			if err != nil {
+				t.Fatalf("search failed: %v", err)
+			}
+			if !resp.ParametricQuery {
+				t.Fatal("expected ParametricQuery to be true")
+			}
+			if resp.Route == nil || resp.Route.Scene != SceneFullMatch || resp.Route.Keyword != keyword {
+				t.Fatalf("expected the route in the response, got %+v", resp.Route)
+			}
+			if got, want := resp.Route.LeafCatalogIDs(0), []int{1199, 1272, 1200}; !reflect.DeepEqual(got, want) {
+				t.Fatalf("expected leaf ids %v, got %v", want, got)
+			}
+			if _, ok := cache.Get(cacheKeyForRoute("USD", keyword)); !ok {
+				t.Fatal("expected Keyword to store the route under the route cache key")
+			}
+			if tt.skipList {
+				if len(resp.Products) != 0 || resp.TotalCount != 0 || resp.CatalogIDs != nil {
+					t.Fatalf("expected no products and no list ids, got %v and %v", productCodes(resp.Products), resp.CatalogIDs)
+				}
+				if want := []string{testSearchV3Path}; !reflect.DeepEqual(paths, want) {
+					t.Fatalf("expected only the v3 request, got %v", paths)
+				}
+			} else {
+				if len(resp.Products) != 3 || resp.ActualTotalCount != 181 {
+					t.Fatalf("expected 3 products and 181 in total, got %d and %d", len(resp.Products), resp.ActualTotalCount)
+				}
+				if want := []int{1199, 1272, 1200}; !reflect.DeepEqual(resp.CatalogIDs, want) {
+					t.Fatalf("expected list ids %v, got %v", want, resp.CatalogIDs)
+				}
+			}
+
+			list, err := client.Search.Parametric(ctx, keyword, tt.opts)
+			if err != nil {
+				t.Fatalf("parametric failed: %v", err)
+			}
+			if !reflect.DeepEqual(paths, tt.wantPaths) {
+				t.Fatalf("expected requests %v, got %v", tt.wantPaths, paths)
+			}
+			if list.Route == nil || list.Route.Scene != SceneFullMatch || len(list.Products) != 3 {
+				t.Fatalf("unexpected parametric response: route %v, %d products", list.Route, len(list.Products))
+			}
+			if tt.opts != nil {
+				last := bodies[len(bodies)-1]
+				if want := []interface{}{float64(1199)}; !reflect.DeepEqual(last["catalogIdList"], want) {
+					t.Fatalf("expected the list request with the best category %v, got %v", want, last["catalogIdList"])
+				}
+				if last["isStock"] != true || last["sortField"] != "stock" || last["pageSize"] != float64(50) {
+					t.Fatalf("expected the list request with the own options, got %v", last)
+				}
+			}
+		})
+	}
+}
+
+func TestSearchParametricThenKeywordUsesCachedRoute(t *testing.T) {
+	var paths []string
+	var bodies []map[string]interface{}
+	client := countingParametricClient(t, newRecordingCache(), &paths, &bodies)
+	defer func() { _ = client.Close() }()
+
+	ctx := context.Background()
+	if _, err := client.Search.Parametric(ctx, "10k 0603", nil); err != nil {
+		t.Fatalf("parametric failed: %v", err)
+	}
+	resp, err := client.Search.Keyword(ctx, &SearchRequest{Keyword: "10k 0603"})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+	if want := []string{testSearchV3Path, testQueryListPath}; !reflect.DeepEqual(paths, want) {
+		t.Fatalf("expected requests %v, got %v", want, paths)
+	}
+	if resp.Route == nil || !resp.ParametricQuery || len(resp.Products) != 3 {
+		t.Fatalf("unexpected response: route %v, parametric %v, %d products", resp.Route, resp.ParametricQuery, len(resp.Products))
+	}
+}
+
+func TestSearchKeywordSkipParametricListHasOwnCacheEntry(t *testing.T) {
+	var paths []string
+	var bodies []map[string]interface{}
+	client := countingParametricClient(t, newRecordingCache(), &paths, &bodies)
+	defer func() { _ = client.Close() }()
+
+	ctx := context.Background()
+	skip := &SearchRequest{Keyword: "10k 0603", SkipParametricList: true}
+	if resp, err := client.Search.Keyword(ctx, skip); err != nil || len(resp.Products) != 0 {
+		t.Fatalf("expected no products, got %v (error %v)", resp, err)
+	}
+
+	// The response without the list must not answer a request that wants
+	// the list.
+	full, err := client.Search.Keyword(ctx, &SearchRequest{Keyword: "10k 0603"})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+	if len(full.Products) != 3 {
+		t.Fatalf("expected 3 products, got %v", productCodes(full.Products))
+	}
+
+	again, err := client.Search.Keyword(ctx, skip)
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+	if len(again.Products) != 0 || again.Route == nil {
+		t.Fatalf("expected the cached response without products, got %v", productCodes(again.Products))
+	}
+	if want := []string{testSearchV3Path, testQueryListPath}; !reflect.DeepEqual(paths, want) {
+		t.Fatalf("expected requests %v, got %v", want, paths)
+	}
+}
+
+func TestSearchKeywordSkipParametricListWithoutCache(t *testing.T) {
+	v3 := mustReadFixture(t, "search_v3_parametric_100nF_0402.json")
+
+	var paths []string
+	client := newSearchTestClient(func(req *http.Request) (*http.Response, error) {
+		paths = append(paths, req.URL.Path)
+		return jsonResponse(http.StatusOK, v3), nil
+	})
+	defer func() { _ = client.Close() }()
+
+	resp, err := client.Search.Keyword(context.Background(), &SearchRequest{Keyword: "100nF 0402", SkipParametricList: true})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+	if want := []string{testSearchV3Path}; !reflect.DeepEqual(paths, want) {
+		t.Fatalf("expected only the v3 request, got %v", paths)
+	}
+	if !resp.ParametricQuery || len(resp.Products) != 0 || resp.Route == nil {
+		t.Fatalf("unexpected response: parametric %v, %d products, route %v", resp.ParametricQuery, len(resp.Products), resp.Route)
+	}
+	if got := resp.Route.LeafCatalogIDs(0); !reflect.DeepEqual(got, []int{1142}) {
+		t.Fatalf("expected the leaf id 1142, got %v", got)
+	}
+}
+
+func TestSearchKeywordSkipParametricListKeepsOtherResults(t *testing.T) {
+	// The field changes only parametric queries. A model keyword still
+	// gives the exact matches.
+	v3 := mustReadFixture(t, "search_v3_model_RP2040.json")
+	client := newSearchTestClient(func(req *http.Request) (*http.Response, error) {
+		if req.URL.Path != testSearchV3Path {
+			t.Errorf("unexpected request to %s", req.URL.Path)
+		}
+		return jsonResponse(http.StatusOK, v3), nil
+	})
+	defer func() { _ = client.Close() }()
+
+	resp, err := client.Search.Keyword(context.Background(), &SearchRequest{Keyword: "RP2040", SkipParametricList: true})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+	if resp.ParametricQuery || len(resp.Products) == 0 || resp.Route == nil || resp.CatalogIDs != nil {
+		t.Fatalf("unexpected response: parametric %v, products %v, route %v, ids %v", resp.ParametricQuery, productCodes(resp.Products), resp.Route, resp.CatalogIDs)
+	}
+}
+
+func TestSearchKeywordCacheEntryWithoutRouteIsIgnored(t *testing.T) {
+	// A cache entry of v1.2.0 has no route. Keyword sends the requests
+	// again, so that Route is not nil.
+	var paths []string
+	var bodies []map[string]interface{}
+	cache := newRecordingCache()
+	cache.Set(cacheKeyForSearch("USD", "10k 0603", false), []byte(`{"Products":null,"ParametricQuery":true}`), time.Minute)
+	client := countingParametricClient(t, cache, &paths, &bodies)
+	defer func() { _ = client.Close() }()
+
+	resp, err := client.Search.Keyword(context.Background(), &SearchRequest{Keyword: "10k 0603"})
+	if err != nil {
+		t.Fatalf("search failed: %v", err)
+	}
+	if resp.Route == nil || len(resp.Products) != 3 {
+		t.Fatalf("expected a new response with the route, got route %v and %d products", resp.Route, len(resp.Products))
+	}
+	if want := []string{testSearchV3Path, testQueryListPath}; !reflect.DeepEqual(paths, want) {
+		t.Fatalf("expected requests %v, got %v", want, paths)
 	}
 }

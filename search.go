@@ -17,6 +17,19 @@ type SearchService service
 // SearchRequest contains parameters for product search.
 type SearchRequest struct {
 	Keyword string
+
+	// SkipParametricList stops the list request for a parametric query.
+	// When LCSC classifies the keyword as a parameter or package query,
+	// [SearchService.Keyword] then sends only the v3 request. It sets
+	// [SearchResponse.ParametricQuery] and [SearchResponse.Route] and
+	// returns no products. The field has no effect for other queries.
+	//
+	// Set it when you call [SearchService.Parametric] with your own
+	// options after Keyword. Parametric then uses the cached route, so
+	// with the cache the two calls send 2 requests. Without this field,
+	// they send 3 requests: the route, the list with the default options
+	// and the list with your options.
+	SkipParametricList bool
 }
 
 // SearchResponse contains product search results.
@@ -55,8 +68,23 @@ type SearchResponse struct {
 	// product list. The client then gets Products from the categories of
 	// the route, as [SearchService.Parametric] does with the default
 	// options: the first page of 25 products in the first 3 leaf
-	// categories. Products is empty when LCSC gives no category.
+	// categories. Products is empty when LCSC gives no category, and when
+	// [SearchRequest.SkipParametricList] is set.
 	ParametricQuery bool
+
+	// Route is the route of the keyword: the result of the v3 request
+	// (see [SearchService.Route]). It is not nil when Keyword returns no
+	// error. The client caches the route under the key of
+	// [SearchService.Route], so [SearchService.Parametric] for the same
+	// keyword does not send the v3 request again. Use
+	// [Route.LeafCatalogIDs] to get the leaf category ids of the route.
+	Route *Route
+
+	// CatalogIDs holds the leaf category ids of the list request for a
+	// parametric query (see [ListResponse.CatalogIDs]). It is empty when
+	// the client sent no list request with categories, for example for a
+	// product model or when [SearchRequest.SkipParametricList] is set.
+	CatalogIDs []int
 }
 
 type productListRequestBody struct {
@@ -91,7 +119,8 @@ const (
 
 // Keyword searches for products by keyword.
 //
-// The client sends the keyword to /search/v3/global and uses the first
+// The client gets the route of the keyword with [SearchService.Route],
+// which sends the keyword to /search/v3/global. Then it uses the first
 // source that has products:
 //
 //  1. The product list of the v3 response.
@@ -106,9 +135,22 @@ const (
 // client sets [SearchResponse.ParametricQuery]. It then sends the keyword
 // as a global keyword to /product/query/list, with the leaf categories of
 // the v3 response (see [SearchService.Parametric]). When the v3 response
-// has no category, the result is empty. For other classifications without
-// a product list, for example a brand, the client returns an empty result.
-// It does not return an error for these cases.
+// has no category, the result is empty. When
+// [SearchRequest.SkipParametricList] is set, the client does not send the
+// list request. For other classifications without a product list, for
+// example a brand, the client returns an empty result. It does not return
+// an error for these cases.
+//
+// The response holds the route in [SearchResponse.Route]. The client
+// caches the route under the key of [SearchService.Route] and the response
+// for CacheConfig.SearchTTL. With the cache, Keyword and then Parametric
+// for the same keyword send these requests:
+//
+//   - 2 requests when Parametric uses the default options. Parametric gets
+//     the route and the list from the cache.
+//   - 2 requests when Keyword has SkipParametricList. Parametric gets the
+//     route from the cache and sends the list request with its options.
+//   - 3 requests for other options without SkipParametricList.
 func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("%w: request is nil", ErrInvalidRequest)
@@ -120,25 +162,26 @@ func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*Searc
 	}
 
 	client := s.client
-	cacheKey := cacheKeyForSearch(client.currency, keyword)
+	cacheKey := cacheKeyForSearch(client.currency, keyword, req.SkipParametricList)
 	if client.cacheConfig.Enabled && client.cache != nil {
 		if cached, ok := client.cache.Get(cacheKey); ok {
+			// An entry of an older version has no route. The client then
+			// sends the request again, so that Route is never nil.
 			var resp SearchResponse
-			if err := json.Unmarshal(cached, &resp); err == nil {
+			if err := json.Unmarshal(cached, &resp); err == nil && resp.Route != nil {
 				return &resp, nil
 			}
 		}
 	}
 
-	var wrapper searchResponseWrapper
-	if err := client.do(ctx, http.MethodPost, "/search/v3/global", nil, routeRequestBody{Keyword: keyword}, &wrapper); err != nil {
+	route, err := s.Route(ctx, keyword)
+	if err != nil {
 		return nil, err
 	}
-
-	route := newRoute(keyword, &wrapper)
 	resp := &SearchResponse{
 		DirectMatchCode: route.RedirectCode,
 		QueryTypes:      route.QueryTypes,
+		Route:           route,
 	}
 
 	// search/v3/global mostly routes the query (direct match, categories).
@@ -157,17 +200,20 @@ func (s *SearchService) Keyword(ctx context.Context, req *SearchRequest) (*Searc
 		resp.ActualTotalCount = resp.TotalCount
 	case route.IsParametric():
 		resp.ParametricQuery = true
-		opts, err := normalizeParametricOptions(nil)
-		if err != nil {
-			return nil, err
+		if !req.SkipParametricList {
+			opts, err := normalizeParametricOptions(nil)
+			if err != nil {
+				return nil, err
+			}
+			list, err := s.listFromRoute(ctx, route, opts)
+			if err != nil {
+				return nil, err
+			}
+			resp.Products = list.Products
+			resp.TotalCount = list.TotalCount
+			resp.ActualTotalCount = list.ActualTotalCount
+			resp.CatalogIDs = list.CatalogIDs
 		}
-		list, err := s.listFromRoute(ctx, route, opts)
-		if err != nil {
-			return nil, err
-		}
-		resp.Products = list.Products
-		resp.TotalCount = list.TotalCount
-		resp.ActualTotalCount = list.ActualTotalCount
 	case allowsFallback(resp.QueryTypes, resp.DirectMatchCode):
 		products, total, actualTotal, err := s.fallbackProducts(ctx, keyword, resp.DirectMatchCode)
 		if err != nil {
@@ -291,8 +337,14 @@ func normalizeSearchText(s string) string {
 // cacheKeyForSearch makes the cache key of [SearchService.Keyword]. The key
 // keeps the case of the keyword, because a parameter query can use the
 // case of an SI prefix: "1m 0603" (milli) and "1M 0603" (mega) are
-// different queries.
-func cacheKeyForSearch(currency, keyword string) string {
+// different queries. A request with [SearchRequest.SkipParametricList]
+// gets a different key, because its response has no products for a
+// parametric query.
+func cacheKeyForSearch(currency, keyword string, skipParametricList bool) string {
 	hash := sha256.Sum256([]byte(strings.TrimSpace(keyword)))
-	return fmt.Sprintf("search:%s:%s", strings.ToUpper(currency), hex.EncodeToString(hash[:8]))
+	key := fmt.Sprintf("search:%s:%s", strings.ToUpper(currency), hex.EncodeToString(hash[:8]))
+	if skipParametricList {
+		key += ":route-only"
+	}
+	return key
 }

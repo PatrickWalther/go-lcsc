@@ -199,7 +199,9 @@ func newRoute(keyword string, w *searchResponseWrapper) *Route {
 // redirect to one product, or a page of products. [SearchService.Parametric]
 // uses the route to select the request for the products.
 //
-// The client caches the route for CacheConfig.SearchTTL.
+// The client caches the route for CacheConfig.SearchTTL. Route,
+// [SearchService.Keyword] and [SearchService.Parametric] share this cache
+// entry, so they send the v3 request only one time for the same keyword.
 func (s *SearchService) Route(ctx context.Context, keyword string) (*Route, error) {
 	keyword = strings.TrimSpace(keyword)
 	if keyword == "" {
@@ -312,7 +314,9 @@ func normalizeParametricOptions(opts *ParametricOptions) (parametricOptions, err
 //     empty response and no error.
 //
 // InStock, Sort and Desc apply only to rule 3. The response holds the
-// route in [ListResponse.Route].
+// route in [ListResponse.Route]. When [SearchService.Keyword] or
+// [SearchService.Route] got the route of the same query before, Parametric
+// uses the cached route and does not send the v3 request again.
 func (s *SearchService) Parametric(ctx context.Context, query string, opts *ParametricOptions) (*ListResponse, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
